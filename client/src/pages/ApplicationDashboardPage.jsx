@@ -12,19 +12,24 @@ import {
   Sparkles,
   BookOpen,
   Award,
-  Cpu
+  Cpu,
+  RefreshCw,
+  FileText,
+  Target,
+  ListOrdered
 } from 'lucide-react';
-import { ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 
 export default function ApplicationDashboardPage() {
   const { applicationId } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [workflowStarting, setWorkflowStarting] = useState(false);
+  const [workflowStatus, setWorkflowStatus] = useState(null);
+  const [polling, setPolling] = useState(false);
 
   useEffect(() => {
     fetchOverview();
+    checkWorkflowStatus();
   }, [applicationId]);
 
   const fetchOverview = async () => {
@@ -38,26 +43,53 @@ export default function ApplicationDashboardPage() {
     }
   };
 
-  const handleStartWorkflow = async () => {
-    setWorkflowStarting(true);
+  const checkWorkflowStatus = async () => {
     try {
-      await apiClient.post(`/workflow/start/${applicationId}`);
-      // Refresh overview
-      setTimeout(() => {
-        fetchOverview();
-        setWorkflowStarting(false);
-      }, 1500);
+      const res = await apiClient.get(`/workflow/status/${applicationId}`);
+      setWorkflowStatus(res.data);
+      if (res.data?.status === 'processing') {
+        startPolling();
+      }
     } catch (err) {
-      setError(err.message);
-      setWorkflowStarting(false);
+      // No active workflow found, normal state
+    }
+  };
+
+  const startPolling = () => {
+    setPolling(true);
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/workflow/status/${applicationId}`);
+        setWorkflowStatus(res.data);
+        if (res.data?.status === 'completed' || res.data?.status === 'failed') {
+          clearInterval(interval);
+          setPolling(false);
+          fetchOverview();
+        }
+      } catch (err) {
+        clearInterval(interval);
+        setPolling(false);
+      }
+    }, 2000);
+  };
+
+  const handleStartWorkflow = async () => {
+    setError('');
+    try {
+      const res = await apiClient.post(`/workflow/start/${applicationId}`);
+      setWorkflowStatus(res.data);
+      startPolling();
+    } catch (err) {
+      setError(err.message || 'Failed to start workflow');
     }
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <div className="h-64 flex items-center justify-center">
+        <div className="h-64 flex flex-col items-center justify-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <span className="text-xs text-[var(--text-muted)]">Loading preparation overview...</span>
         </div>
       </AppLayout>
     );
@@ -72,129 +104,244 @@ export default function ApplicationDashboardPage() {
   return (
     <AppLayout currentApplication={app}>
       <div className="space-y-6">
-        {/* Header Banner */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-900 to-slate-900 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Target Application Dashboard</div>
-            <h1 className="text-2xl font-bold mt-1">{app?.jobTitle}</h1>
-            <div className="text-indigo-200 text-sm mt-0.5">{app?.companyName}</div>
+        {/* Top Header Card */}
+        <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white border border-indigo-900/50 shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">
+              <Target size={12} />
+              <span>Target Preparation Hub</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{app?.jobTitle}</h1>
+            <div className="text-indigo-200 text-sm font-semibold mt-0.5">{app?.companyName}</div>
+
+            {app?.interviewDate && (
+              <div className="flex items-center gap-2 text-xs text-indigo-300/80 mt-3">
+                <Calendar size={13} />
+                <span>Target Interview: {new Date(app.interviewDate).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleStartWorkflow}
-            disabled={workflowStarting}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition-all shadow-md disabled:opacity-50"
-          >
-            <Sparkles size={16} />
-            <span>{workflowStarting ? 'Running Workflow...' : 'Prepare Completely'}</span>
-          </button>
+
+          {/* Workflow Action Button */}
+          <div className="relative z-10 w-full md:w-auto flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleStartWorkflow}
+              disabled={polling || workflowStatus?.status === 'processing'}
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold transition-all shadow hover:shadow-indigo-500/25 active:scale-95 disabled:opacity-60"
+            >
+              <Sparkles size={16} className={polling ? "animate-spin" : ""} />
+              <span>{polling ? 'Running Workflow Pipeline...' : 'Prepare Completely'}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Notice */}
-        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-center gap-2">
+        {/* Workflow Progress Bar if active */}
+        {workflowStatus && (workflowStatus.status === 'processing' || workflowStatus.progress < 100) && (
+          <div className="p-4 rounded-xl bg-[var(--bg-surface)] border border-indigo-200 dark:border-indigo-900/60 shadow-sm space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                Workflow Progress: {workflowStatus.currentStage?.replace(/_/g, ' ')}
+              </span>
+              <span className="font-bold">{workflowStatus.progress || 0}%</span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div
+                className="h-full bg-indigo-600 transition-all duration-500"
+                style={{ width: `${workflowStatus.progress || 10}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Disclaimer */}
+        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-center gap-2.5">
           <AlertCircle size={15} className="text-amber-500 shrink-0" />
           <span>
-            The alignment score is an indicator of job requirements match and preparation effort. It is never a hiring probability.
+            HireMate AI calculates transparent target job alignment. Scores are indicators of requirement match and preparation effort—never hiring probabilities.
           </span>
         </div>
 
-        {/* Dual Scores KPI Row */}
+        {/* KPI Dual Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Job Match Score Card */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Job Match Score</span>
-                <div className="text-3xl font-bold mt-1">
-                  {match ? `${match.total}%` : 'Not Calculated'}
+          <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Job Match Score</span>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">
+                    {match ? `${match.total}%` : 'Not Run'}
+                  </div>
                 </div>
+                {match?.isProvisional ? (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    Provisional ({match.coverage}% coverage)
+                  </span>
+                ) : match ? (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    Full Coverage ({match.coverage}%)
+                  </span>
+                ) : null}
               </div>
-              {match?.isProvisional && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
-                  Provisional (Coverage: {match.coverage}%)
-                </span>
-              )}
+              <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
+                Deterministic calculation across technical skills, experience years, relevant projects, education level, keywords, and resume quality.
+              </p>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-2">
-              Weighted alignment across skills, experience, projects, education, keywords, and resume structure.
-            </p>
-            <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">
-              <span className="text-[var(--text-muted)]">Target requirements match</span>
-              <Link to={`/app/${applicationId}/match`} className="text-indigo-600 font-semibold hover:underline">
-                View Requirements →
+
+            <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">
+              <span className="text-[var(--text-muted)]">Explainable requirements match</span>
+              <Link to={`/app/${applicationId}/match`} className="text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                <span>View Why Panels</span>
+                <ArrowRight size={13} />
               </Link>
             </div>
           </div>
 
           {/* Interview Readiness Score Card */}
-          <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Interview Readiness</span>
-                <div className="text-3xl font-bold mt-1">
-                  {readiness ? `${readiness.total}%` : '0%'}
+          <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Interview Readiness</span>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">
+                    {readiness ? `${readiness.total}%` : '0%'}
+                  </div>
                 </div>
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {readiness?.statusSummary || '0 of 7 areas started'}
+                </span>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-                {readiness?.statusSummary || '0 of 7 areas started'}
-              </span>
+              <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
+                Active preparation effort metric across practice tests, auto-graded coding, questions prepared, company knowledge, and completed checklist tasks.
+              </p>
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-2">
-              Measures preparation effort across tests, auto-graded coding, company knowledge, questions prepared, and checklist.
-            </p>
-            <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">
-              <span className="text-[var(--text-muted)]">Preparation progress</span>
-              <Link to={`/app/${applicationId}/checklist`} className="text-indigo-600 font-semibold hover:underline">
-                View Readiness Breakdown →
+
+            <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">
+              <span className="text-[var(--text-muted)]">Preparation completion status</span>
+              <Link to={`/app/${applicationId}/checklist`} className="text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                <span>View Readiness Breakdown</span>
+                <ArrowRight size={13} />
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Preparation Modules Quick Links */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link
-            to={`/app/${applicationId}/resume`}
-            className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-all flex items-center justify-between group"
-          >
-            <div>
-              <div className="text-xs text-[var(--text-muted)] font-medium">Step 1</div>
-              <div className="font-semibold text-sm group-hover:text-indigo-600">Resume & Quality</div>
-            </div>
-            <ArrowRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-          </Link>
+        {/* Preparation Stages Flow */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="font-extrabold text-base sm:text-lg">Structured Preparation Flow</h3>
+            <span className="text-xs text-[var(--text-muted)] font-medium">Follow in sequential steps</span>
+          </div>
 
-          <Link
-            to={`/app/${applicationId}/roadmap`}
-            className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-all flex items-center justify-between group"
-          >
-            <div>
-              <div className="text-xs text-[var(--text-muted)] font-medium">Step 2</div>
-              <div className="font-semibold text-sm group-hover:text-indigo-600">Roadmap Plan</div>
-            </div>
-            <ArrowRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-          </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Link
+              to={`/app/${applicationId}/match`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 1</span>
+                  <Briefcase size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Target Job & Alignment</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Extract real job requirements and review explainable "Why" panels.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>Review Requirements</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
 
-          <Link
-            to={`/app/${applicationId}/practice`}
-            className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-all flex items-center justify-between group"
-          >
-            <div>
-              <div className="text-xs text-[var(--text-muted)] font-medium">Step 3</div>
-              <div className="font-semibold text-sm group-hover:text-indigo-600">Practice & Coding</div>
-            </div>
-            <ArrowRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-          </Link>
+            <Link
+              to={`/app/${applicationId}/resume`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 2</span>
+                  <FileText size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Resume & Quality Check</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Upload PDF in memory, check action verbs ratio, and verify extracted skills.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>Upload & Verify Resume</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
 
-          <Link
-            to={`/app/${applicationId}/company`}
-            className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-all flex items-center justify-between group"
-          >
-            <div>
-              <div className="text-xs text-[var(--text-muted)] font-medium">Step 4</div>
-              <div className="font-semibold text-sm group-hover:text-indigo-600">Company Quiz</div>
-            </div>
-            <ArrowRight size={16} className="text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-          </Link>
+            <Link
+              to={`/app/${applicationId}/roadmap`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 3</span>
+                  <Clock size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Preparation Roadmap</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Dated study schedule allocating time proportionally across identified gaps.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>View Roadmap Schedule</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            <Link
+              to={`/app/${applicationId}/practice`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 4</span>
+                  <Cpu size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Practice & Auto-Graded Coding</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Solve 10-question tests with auto-graded debugging and adaptive difficulty.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>Start Practice Tests</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            <Link
+              to={`/app/${applicationId}/company`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 5</span>
+                  <BookOpen size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Company Research & Quiz</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Verified company culture facts and quiz questions built only from verified facts.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>Research & Quiz</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            <Link
+              to={`/app/${applicationId}/checklist`}
+              className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/60 transition-all flex flex-col justify-between group shadow-sm"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 6 & 7</span>
+                  <CheckCircle size={15} className="text-indigo-500" />
+                </div>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Readiness & Final Checklist</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Audit interview preparedness and complete final prerequisites before interview day.</p>
+              </div>
+              <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
+                <span>Complete Final Checklist</span>
+                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
     </AppLayout>
