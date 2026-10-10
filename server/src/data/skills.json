@@ -1,0 +1,1252 @@
+[
+  {
+    "name": "JavaScript",
+    "category": "language",
+    "aliases": [
+      "JS",
+      "ECMAScript",
+      "ES6",
+      "ES2015",
+      "ES2020",
+      "ES2022"
+    ]
+  },
+  {
+    "name": "TypeScript",
+    "category": "language",
+    "aliases": [
+      "TS"
+    ]
+  },
+  {
+    "name": "Python",
+    "category": "language",
+    "aliases": [
+      "Python 3",
+      "Python3",
+      "Py"
+    ]
+  },
+  {
+    "name": "Java",
+    "category": "language",
+    "aliases": [
+      "Java 8",
+      "Java 11",
+      "Java 17",
+      "Java 21",
+      "Core Java"
+    ]
+  },
+  {
+    "name": "C++",
+    "category": "language",
+    "aliases": [
+      "CPP",
+      "C plus plus",
+      "C/C++"
+    ]
+  },
+  {
+    "name": "C",
+    "category": "language",
+    "aliases": [
+      "C Language",
+      "ANSI C"
+    ]
+  },
+  {
+    "name": "C#",
+    "category": "language",
+    "aliases": [
+      "CSharp",
+      "C Sharp",
+      ".NET C#"
+    ]
+  },
+  {
+    "name": "Go",
+    "category": "language",
+    "aliases": [
+      "Golang"
+    ]
+  },
+  {
+    "name": "Rust",
+    "category": "language",
+    "aliases": [
+      "Rustlang"
+    ]
+  },
+  {
+    "name": "Ruby",
+    "category": "language",
+    "aliases": [
+      "Ruby on Rails Language"
+    ]
+  },
+  {
+    "name": "PHP",
+    "category": "language",
+    "aliases": [
+      "PHP7",
+      "PHP8"
+    ]
+  },
+  {
+    "name": "Kotlin",
+    "category": "language",
+    "aliases": [
+      "Kotlin JVM"
+    ]
+  },
+  {
+    "name": "Swift",
+    "category": "language",
+    "aliases": [
+      "Swift 5"
+    ]
+  },
+  {
+    "name": "Dart",
+    "category": "language",
+    "aliases": [
+      "Dartlang"
+    ]
+  },
+  {
+    "name": "Scala",
+    "category": "language",
+    "aliases": []
+  },
+  {
+    "name": "R",
+    "category": "language",
+    "aliases": [
+      "R Language",
+      "R Programming"
+    ]
+  },
+  {
+    "name": "SQL",
+    "category": "language",
+    "aliases": [
+      "Structured Query Language",
+      "ANSI SQL"
+    ]
+  },
+  {
+    "name": "HTML",
+    "category": "language",
+    "aliases": [
+      "HTML5"
+    ]
+  },
+  {
+    "name": "CSS",
+    "category": "language",
+    "aliases": [
+      "CSS3"
+    ]
+  },
+  {
+    "name": "Shell Scripting",
+    "category": "language",
+    "aliases": [
+      "Bash",
+      "Shell",
+      "Zsh",
+      "Sh"
+    ]
+  },
+  {
+    "name": "Perl",
+    "category": "language",
+    "aliases": []
+  },
+  {
+    "name": "Haskell",
+    "category": "language",
+    "aliases": []
+  },
+  {
+    "name": "Lua",
+    "category": "language",
+    "aliases": []
+  },
+  {
+    "name": "Julia",
+    "category": "language",
+    "aliases": []
+  },
+  {
+    "name": "Solidity",
+    "category": "language",
+    "aliases": [
+      "Ethereum Solidity"
+    ]
+  },
+  {
+    "name": "React",
+    "category": "frontend",
+    "aliases": [
+      "React.js",
+      "ReactJS",
+      "React 18",
+      "React 19"
+    ]
+  },
+  {
+    "name": "Next.js",
+    "category": "frontend",
+    "aliases": [
+      "Nextjs",
+      "Next JS",
+      "Next 13",
+      "Next 14",
+      "Next 15"
+    ]
+  },
+  {
+    "name": "Vue.js",
+    "category": "frontend",
+    "aliases": [
+      "Vue",
+      "Vuejs",
+      "Vue 3",
+      "Vue2"
+    ]
+  },
+  {
+    "name": "Nuxt.js",
+    "category": "frontend",
+    "aliases": [
+      "Nuxt",
+      "Nuxtjs"
+    ]
+  },
+  {
+    "name": "Angular",
+    "category": "frontend",
+    "aliases": [
+      "AngularJS",
+      "Angular 2+",
+      "Angular 14",
+      "Angular 16",
+      "Angular 17"
+    ]
+  },
+  {
+    "name": "Svelte",
+    "category": "frontend",
+    "aliases": [
+      "Svelte.js",
+      "SvelteKit"
+    ]
+  },
+  {
+    "name": "Redux",
+    "category": "frontend",
+    "aliases": [
+      "Redux Toolkit",
+      "RTK",
+      "Redux.js"
+    ]
+  },
+  {
+    "name": "Zustand",
+    "category": "frontend",
+    "aliases": []
+  },
+  {
+    "name": "Tailwind CSS",
+    "category": "frontend",
+    "aliases": [
+      "Tailwind",
+      "TailwindCSS"
+    ]
+  },
+  {
+    "name": "Bootstrap",
+    "category": "frontend",
+    "aliases": [
+      "Twitter Bootstrap",
+      "Bootstrap 5"
+    ]
+  },
+  {
+    "name": "Sass",
+    "category": "frontend",
+    "aliases": [
+      "SCSS",
+      "SASS"
+    ]
+  },
+  {
+    "name": "Material UI",
+    "category": "frontend",
+    "aliases": [
+      "MUI",
+      "Material-UI"
+    ]
+  },
+  {
+    "name": "Chakra UI",
+    "category": "frontend",
+    "aliases": [
+      "ChakraUI",
+      "Chakra"
+    ]
+  },
+  {
+    "name": "Shadcn UI",
+    "category": "frontend",
+    "aliases": [
+      "shadcn/ui",
+      "shadcn"
+    ]
+  },
+  {
+    "name": "Webpack",
+    "category": "frontend",
+    "aliases": []
+  },
+  {
+    "name": "Vite",
+    "category": "frontend",
+    "aliases": [
+      "Vite.js",
+      "ViteJS"
+    ]
+  },
+  {
+    "name": "jQuery",
+    "category": "frontend",
+    "aliases": [
+      "JQuery"
+    ]
+  },
+  {
+    "name": "React Native",
+    "category": "frontend",
+    "aliases": [
+      "ReactNative",
+      "RN"
+    ]
+  },
+  {
+    "name": "Flutter",
+    "category": "frontend",
+    "aliases": [
+      "Flutter SDK"
+    ]
+  },
+  {
+    "name": "Node.js",
+    "category": "backend",
+    "aliases": [
+      "Node",
+      "NodeJS",
+      "Node js"
+    ]
+  },
+  {
+    "name": "Express",
+    "category": "backend",
+    "aliases": [
+      "Express.js",
+      "ExpressJS"
+    ]
+  },
+  {
+    "name": "NestJS",
+    "category": "backend",
+    "aliases": [
+      "Nest.js",
+      "Nest"
+    ]
+  },
+  {
+    "name": "FastAPI",
+    "category": "backend",
+    "aliases": [
+      "Fast API"
+    ]
+  },
+  {
+    "name": "Django",
+    "category": "backend",
+    "aliases": [
+      "Django REST Framework",
+      "DRF"
+    ]
+  },
+  {
+    "name": "Flask",
+    "category": "backend",
+    "aliases": [
+      "Flask Python"
+    ]
+  },
+  {
+    "name": "Spring Boot",
+    "category": "backend",
+    "aliases": [
+      "SpringBoot",
+      "Spring Framework",
+      "Spring"
+    ]
+  },
+  {
+    "name": "ASP.NET Core",
+    "category": "backend",
+    "aliases": [
+      "ASP.NET",
+      ".NET Core",
+      "DotNet Core",
+      ".NET 8"
+    ]
+  },
+  {
+    "name": "Ruby on Rails",
+    "category": "backend",
+    "aliases": [
+      "Rails",
+      "RoR"
+    ]
+  },
+  {
+    "name": "Laravel",
+    "category": "backend",
+    "aliases": [
+      "Laravel PHP"
+    ]
+  },
+  {
+    "name": "Gin",
+    "category": "backend",
+    "aliases": [
+      "Gin Gonic",
+      "Gin Web Framework"
+    ]
+  },
+  {
+    "name": "Fastify",
+    "category": "backend",
+    "aliases": [
+      "Fastify.js"
+    ]
+  },
+  {
+    "name": "Koa",
+    "category": "backend",
+    "aliases": [
+      "Koa.js"
+    ]
+  },
+  {
+    "name": "GraphQL",
+    "category": "backend",
+    "aliases": [
+      "Apollo GraphQL",
+      "GQL"
+    ]
+  },
+  {
+    "name": "REST API",
+    "category": "backend",
+    "aliases": [
+      "RESTful APIs",
+      "REST",
+      "RESTful Web Services",
+      "Web APIs"
+    ]
+  },
+  {
+    "name": "gRPC",
+    "category": "backend",
+    "aliases": [
+      "gRPC Protocol",
+      "Protocol Buffers",
+      "Protobuf"
+    ]
+  },
+  {
+    "name": "WebSockets",
+    "category": "backend",
+    "aliases": [
+      "WebSocket",
+      "Socket.io"
+    ]
+  },
+  {
+    "name": "MongoDB",
+    "category": "database",
+    "aliases": [
+      "Mongo",
+      "MongoDB Atlas",
+      "Mongoose"
+    ]
+  },
+  {
+    "name": "MySQL",
+    "category": "database",
+    "aliases": [
+      "My SQL"
+    ]
+  },
+  {
+    "name": "SQLite",
+    "category": "database",
+    "aliases": [
+      "SQLite3"
+    ]
+  },
+  {
+    "name": "Redis",
+    "category": "database",
+    "aliases": [
+      "Redis Cache",
+      "Redis DB"
+    ]
+  },
+  {
+    "name": "Cassandra",
+    "category": "database",
+    "aliases": [
+      "Apache Cassandra"
+    ]
+  },
+  {
+    "name": "DynamoDB",
+    "category": "database",
+    "aliases": [
+      "Amazon DynamoDB",
+      "AWS DynamoDB"
+    ]
+  },
+  {
+    "name": "Elasticsearch",
+    "category": "database",
+    "aliases": [
+      "Elastic Search",
+      "ELK Stack"
+    ]
+  },
+  {
+    "name": "Neo4j",
+    "category": "database",
+    "aliases": [
+      "Neo 4j",
+      "Graph DB"
+    ]
+  },
+  {
+    "name": "Oracle DB",
+    "category": "database",
+    "aliases": [
+      "Oracle Database",
+      "PL/SQL"
+    ]
+  },
+  {
+    "name": "Microsoft SQL Server",
+    "category": "database",
+    "aliases": [
+      "MSSQL",
+      "SQL Server",
+      "T-SQL"
+    ]
+  },
+  {
+    "name": "Firebase Realtime Database",
+    "category": "database",
+    "aliases": [
+      "Firebase RTDB"
+    ]
+  },
+  {
+    "name": "Firebase Firestore",
+    "category": "database",
+    "aliases": [
+      "Firestore",
+      "Cloud Firestore"
+    ]
+  },
+  {
+    "name": "CouchDB",
+    "category": "database",
+    "aliases": [
+      "Apache CouchDB"
+    ]
+  },
+  {
+    "name": "ClickHouse",
+    "category": "database",
+    "aliases": []
+  },
+  {
+    "name": "Snowflake",
+    "category": "database",
+    "aliases": [
+      "Snowflake DW"
+    ]
+  },
+  {
+    "name": "BigQuery",
+    "category": "database",
+    "aliases": [
+      "Google BigQuery",
+      "GCP BigQuery"
+    ]
+  },
+  {
+    "name": "Amazon Web Services",
+    "category": "cloud",
+    "aliases": [
+      "AWS",
+      "Amazon Cloud",
+      "AWS Cloud"
+    ]
+  },
+  {
+    "name": "Google Cloud Platform",
+    "category": "cloud",
+    "aliases": [
+      "GCP",
+      "Google Cloud"
+    ]
+  },
+  {
+    "name": "Microsoft Azure",
+    "category": "cloud",
+    "aliases": [
+      "Azure",
+      "Azure Cloud"
+    ]
+  },
+  {
+    "name": "Docker",
+    "category": "devops",
+    "aliases": [
+      "Docker Container",
+      "Docker Compose"
+    ]
+  },
+  {
+    "name": "Kubernetes",
+    "category": "devops",
+    "aliases": [
+      "K8s",
+      "Kube"
+    ]
+  },
+  {
+    "name": "Terraform",
+    "category": "devops",
+    "aliases": [
+      "HashiCorp Terraform",
+      "IaC Terraform"
+    ]
+  },
+  {
+    "name": "Ansible",
+    "category": "devops",
+    "aliases": []
+  },
+  {
+    "name": "CI/CD",
+    "category": "devops",
+    "aliases": [
+      "Continuous Integration",
+      "Continuous Deployment",
+      "CI-CD"
+    ]
+  },
+  {
+    "name": "GitHub Actions",
+    "category": "devops",
+    "aliases": [
+      "GHA",
+      "Github Action"
+    ]
+  },
+  {
+    "name": "GitLab CI",
+    "category": "devops",
+    "aliases": [
+      "Gitlab CI/CD"
+    ]
+  },
+  {
+    "name": "Jenkins",
+    "category": "devops",
+    "aliases": [
+      "Jenkins CI"
+    ]
+  },
+  {
+    "name": "CircleCI",
+    "category": "devops",
+    "aliases": []
+  },
+  {
+    "name": "ArgoCD",
+    "category": "devops",
+    "aliases": [
+      "Argo CD"
+    ]
+  },
+  {
+    "name": "Prometheus",
+    "category": "devops",
+    "aliases": []
+  },
+  {
+    "name": "Grafana",
+    "category": "devops",
+    "aliases": []
+  },
+  {
+    "name": "Nginx",
+    "category": "devops",
+    "aliases": [
+      "NGINX Plus"
+    ]
+  },
+  {
+    "name": "Apache HTTP Server",
+    "category": "devops",
+    "aliases": [
+      "Apache Web Server",
+      "HTTPD"
+    ]
+  },
+  {
+    "name": "Linux",
+    "category": "devops",
+    "aliases": [
+      "Ubuntu",
+      "CentOS",
+      "Debian",
+      "RedHat",
+      "RHEL",
+      "Linux OS"
+    ]
+  },
+  {
+    "name": "Serverless",
+    "category": "cloud",
+    "aliases": [
+      "AWS Lambda",
+      "Cloud Functions",
+      "Azure Functions"
+    ]
+  },
+  {
+    "name": "Kafka",
+    "category": "cloud",
+    "aliases": [
+      "Apache Kafka",
+      "Kafka Streams"
+    ]
+  },
+  {
+    "name": "RabbitMQ",
+    "category": "cloud",
+    "aliases": [
+      "Rabbit MQ",
+      "AMQP"
+    ]
+  },
+  {
+    "name": "Jest",
+    "category": "testing",
+    "aliases": [
+      "Jest.js"
+    ]
+  },
+  {
+    "name": "Vitest",
+    "category": "testing",
+    "aliases": [
+      "Vitest Runner"
+    ]
+  },
+  {
+    "name": "Mocha",
+    "category": "testing",
+    "aliases": [
+      "Mocha.js",
+      "Mocha Chai"
+    ]
+  },
+  {
+    "name": "Cypress",
+    "category": "testing",
+    "aliases": [
+      "Cypress.io",
+      "Cypress E2E"
+    ]
+  },
+  {
+    "name": "Playwright",
+    "category": "testing",
+    "aliases": [
+      "Microsoft Playwright"
+    ]
+  },
+  {
+    "name": "Selenium",
+    "category": "testing",
+    "aliases": [
+      "Selenium WebDriver"
+    ]
+  },
+  {
+    "name": "JUnit",
+    "category": "testing",
+    "aliases": [
+      "JUnit 4",
+      "JUnit 5"
+    ]
+  },
+  {
+    "name": "PyTest",
+    "category": "testing",
+    "aliases": [
+      "pytest",
+      "Pytest Framework"
+    ]
+  },
+  {
+    "name": "Test-Driven Development",
+    "category": "testing",
+    "aliases": [
+      "TDD"
+    ]
+  },
+  {
+    "name": "Behavior-Driven Development",
+    "category": "testing",
+    "aliases": [
+      "BDD",
+      "Cucumber"
+    ]
+  },
+  {
+    "name": "Postman",
+    "category": "testing",
+    "aliases": [
+      "Postman API"
+    ]
+  },
+  {
+    "name": "Git",
+    "category": "tool",
+    "aliases": [
+      "Version Control",
+      "Git SCM"
+    ]
+  },
+  {
+    "name": "GitHub",
+    "category": "tool",
+    "aliases": [
+      "Github.com"
+    ]
+  },
+  {
+    "name": "GitLab",
+    "category": "tool",
+    "aliases": []
+  },
+  {
+    "name": "Bitbucket",
+    "category": "tool",
+    "aliases": []
+  },
+  {
+    "name": "Jira",
+    "category": "tool",
+    "aliases": [
+      "Atlassian Jira"
+    ]
+  },
+  {
+    "name": "Confluence",
+    "category": "tool",
+    "aliases": []
+  },
+  {
+    "name": "Figma",
+    "category": "tool",
+    "aliases": [
+      "Figma Design",
+      "UI Design Figma"
+    ]
+  },
+  {
+    "name": "VS Code",
+    "category": "tool",
+    "aliases": [
+      "Visual Studio Code",
+      "VSCode"
+    ]
+  },
+  {
+    "name": "Machine Learning",
+    "category": "ai",
+    "aliases": [
+      "ML",
+      "Machine Learning Algorithms"
+    ]
+  },
+  {
+    "name": "Deep Learning",
+    "category": "ai",
+    "aliases": [
+      "DL",
+      "Neural Networks"
+    ]
+  },
+  {
+    "name": "Artificial Intelligence",
+    "category": "ai",
+    "aliases": [
+      "AI"
+    ]
+  },
+  {
+    "name": "Natural Language Processing",
+    "category": "ai",
+    "aliases": [
+      "NLP"
+    ]
+  },
+  {
+    "name": "Computer Vision",
+    "category": "ai",
+    "aliases": [
+      "CV",
+      "Image Processing",
+      "OpenCV"
+    ]
+  },
+  {
+    "name": "Large Language Models",
+    "category": "ai",
+    "aliases": [
+      "LLM",
+      "LLMs",
+      "Generative AI",
+      "GenAI"
+    ]
+  },
+  {
+    "name": "TensorFlow",
+    "category": "ai",
+    "aliases": [
+      "TF",
+      "Tensorflow 2"
+    ]
+  },
+  {
+    "name": "PyTorch",
+    "category": "ai",
+    "aliases": [
+      "Torch"
+    ]
+  },
+  {
+    "name": "Scikit-Learn",
+    "category": "ai",
+    "aliases": [
+      "Sklearn",
+      "Scikit learn"
+    ]
+  },
+  {
+    "name": "Pandas",
+    "category": "ai",
+    "aliases": [
+      "Python Pandas"
+    ]
+  },
+  {
+    "name": "NumPy",
+    "category": "ai",
+    "aliases": [
+      "Numpy"
+    ]
+  },
+  {
+    "name": "LangChain",
+    "category": "ai",
+    "aliases": [
+      "Langchain"
+    ]
+  },
+  {
+    "name": "LlamaIndex",
+    "category": "ai",
+    "aliases": [
+      "Llama Index"
+    ]
+  },
+  {
+    "name": "Hugging Face",
+    "category": "ai",
+    "aliases": [
+      "HuggingFace",
+      "Transformers"
+    ]
+  },
+  {
+    "name": "Prompt Engineering",
+    "category": "ai",
+    "aliases": [
+      "Prompt Design"
+    ]
+  },
+  {
+    "name": "Data Structures & Algorithms",
+    "category": "concept",
+    "aliases": [
+      "DSA",
+      "Data Structures",
+      "Algorithms"
+    ]
+  },
+  {
+    "name": "Object-Oriented Programming",
+    "category": "concept",
+    "aliases": [
+      "OOP",
+      "OOPs",
+      "Object Oriented Design"
+    ]
+  },
+  {
+    "name": "System Design",
+    "category": "concept",
+    "aliases": [
+      "Distributed Systems Design",
+      "High Level Design",
+      "HLD",
+      "Low Level Design",
+      "LLD"
+    ]
+  },
+  {
+    "name": "Microservices",
+    "category": "concept",
+    "aliases": [
+      "Microservice Architecture",
+      "Microservices Architecture"
+    ]
+  },
+  {
+    "name": "Design Patterns",
+    "category": "concept",
+    "aliases": [
+      "Software Design Patterns",
+      "GoF Patterns"
+    ]
+  },
+  {
+    "name": "Operating Systems",
+    "category": "concept",
+    "aliases": [
+      "OS Concepts",
+      "Operating System"
+    ]
+  },
+  {
+    "name": "Computer Networks",
+    "category": "concept",
+    "aliases": [
+      "Networking",
+      "TCP/IP",
+      "HTTP/HTTPS",
+      "Network Protocols"
+    ]
+  },
+  {
+    "name": "Database Management Systems",
+    "category": "concept",
+    "aliases": [
+      "DBMS",
+      "RDBMS Concepts",
+      "ACID Properties",
+      "Database Indexing"
+    ]
+  },
+  {
+    "name": "Agile Methodologies",
+    "category": "concept",
+    "aliases": [
+      "Agile",
+      "Scrum",
+      "Kanban",
+      "Sprint Planning"
+    ]
+  },
+  {
+    "name": "Cybersecurity",
+    "category": "concept",
+    "aliases": [
+      "Information Security",
+      "InfoSec",
+      "Web Security",
+      "OWASP"
+    ]
+  },
+  {
+    "name": "OAuth",
+    "category": "concept",
+    "aliases": [
+      "OAuth2",
+      "OAuth 2.0",
+      "OpenID Connect",
+      "JWT",
+      "Authentication & Authorization"
+    ]
+  },
+  {
+    "name": "Clean Code",
+    "category": "concept",
+    "aliases": [
+      "SOLID Principles",
+      "Code Quality",
+      "Refactoring"
+    ]
+  },
+  {
+    "name": "Event-Driven Architecture",
+    "category": "concept",
+    "aliases": [
+      "EDA",
+      "Pub/Sub",
+      "Message Driven Architecture"
+    ]
+  },
+  {
+    "name": "GraphQL Apollo",
+    "category": "backend",
+    "aliases": [
+      "Apollo Client",
+      "Apollo Server"
+    ]
+  },
+  {
+    "name": "Tailwind UI",
+    "category": "frontend",
+    "aliases": [
+      "Headless UI"
+    ]
+  },
+  {
+    "name": "Unit Testing",
+    "category": "testing",
+    "aliases": [
+      "Unit Tests",
+      "Component Testing"
+    ]
+  },
+  {
+    "name": "Integration Testing",
+    "category": "testing",
+    "aliases": [
+      "Integration Tests",
+      "API Testing"
+    ]
+  },
+  {
+    "name": "End-to-End Testing",
+    "category": "testing",
+    "aliases": [
+      "E2E Testing",
+      "End to End Tests"
+    ]
+  },
+  {
+    "name": "Web Performance",
+    "category": "concept",
+    "aliases": [
+      "Core Web Vitals",
+      "Lighthouse",
+      "Web Vitals",
+      "Optimization"
+    ]
+  },
+  {
+    "name": "Cross-Browser Compatibility",
+    "category": "frontend",
+    "aliases": [
+      "Responsive Web Design",
+      "Responsive Design",
+      "Mobile-first"
+    ]
+  },
+  {
+    "name": "Accessibility",
+    "category": "frontend",
+    "aliases": [
+      "a11y",
+      "WCAG",
+      "ARIA"
+    ]
+  },
+  {
+    "name": "Git Flow",
+    "category": "tool",
+    "aliases": [
+      "Feature Branching",
+      "Trunk Based Development"
+    ]
+  },
+  {
+    "name": "Linux Shell",
+    "category": "devops",
+    "aliases": [
+      "Unix Commands",
+      "Bash Scripting"
+    ]
+  },
+  {
+    "name": "Message Queues",
+    "category": "concept",
+    "aliases": [
+      "Message Broker",
+      "Asynchronous Messaging"
+    ]
+  },
+  {
+    "name": "Caching",
+    "category": "concept",
+    "aliases": [
+      "Memcached",
+      "Cache Invalidation",
+      "Distributed Caching"
+    ]
+  },
+  {
+    "name": "Security Best Practices",
+    "category": "concept",
+    "aliases": [
+      "OWASP Top 10",
+      "XSS Prevention",
+      "CSRF Prevention",
+      "SQL Injection Prevention"
+    ]
+  },
+  {
+    "name": "Microfrontends",
+    "category": "frontend",
+    "aliases": [
+      "Micro Frontend Architecture",
+      "Module Federation"
+    ]
+  }
+]

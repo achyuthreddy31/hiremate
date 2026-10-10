@@ -1,0 +1,81 @@
+[
+  {
+    "id": "pair_01",
+    "jobTitle": "Full Stack Engineer",
+    "company": "CloudScale Inc",
+    "jobDescription": "We are looking for a Full Stack Engineer with 3+ years experience. Required: JavaScript, React, Node.js, Docker, PostgreSQL. Preferred: GraphQL.",
+    "resumeText": "Experienced engineer skilled in JavaScript, React, and Node.js. Built containerized applications using Docker. Worked on relational databases including PostgreSQL. Led migration of microservices.",
+    "expectedRequirements": ["JavaScript", "React", "Node.js", "Docker", "PostgreSQL"],
+    "expectedSkills": ["JavaScript", "React", "Node.js", "Docker", "PostgreSQL"],
+    "expectedStatus": {
+      "JavaScript": "strong",
+      "React": "strong",
+      "Node.js": "strong",
+      "Docker": "good",
+      "PostgreSQL": "good"
+    }
+  },
+  {
+    "id": "pair_02",
+    "jobTitle": "Backend Python Developer",
+    "company": "DataStream Corp",
+    "jobDescription": "Backend Developer wanted. Must have 2+ years of Python, Django or FastAPI, Redis, and SQL. Experience with AWS is a plus.",
+    "resumeText": "Backend specialist with 3 years building APIs using Python and FastAPI. Proficient in Redis caching and MySQL database queries. Deployed on AWS.",
+    "expectedRequirements": ["Python", "FastAPI", "Redis", "SQL"],
+    "expectedSkills": ["Python", "FastAPI", "Redis", "SQL"],
+    "expectedStatus": {
+      "Python": "strong",
+      "FastAPI": "strong",
+      "Redis": "good",
+      "SQL": "good"
+    }
+  },
+  {
+    "id": "pair_03",
+    "jobTitle": "Frontend React Specialist",
+    "company": "DesignFirst Media",
+    "jobDescription": "Frontend Developer needed for high-traffic user interfaces. Requirements: TypeScript, React, Next.js, Tailwind CSS, Jest.",
+    "resumeText": "Frontend software developer with hands-on experience in TypeScript, React, and Tailwind CSS. Built responsive web applications and unit tests with Jest.",
+    "expectedRequirements": ["TypeScript", "React", "Next.js", "Tailwind CSS", "Jest"],
+    "expectedSkills": ["TypeScript", "React", "Tailwind CSS", "Jest"],
+    "expectedStatus": {
+      "TypeScript": "strong",
+      "React": "strong",
+      "Tailwind CSS": "good",
+      "Jest": "good",
+      "Next.js": "missing"
+    }
+  },
+  {
+    "id": "pair_04",
+    "jobTitle": "DevOps / Infrastructure Engineer",
+    "company": "SaaS Platform",
+    "jobDescription": "Seeking DevOps Engineer. Required: Kubernetes, Docker, Terraform, Linux, CI/CD, Prometheus.",
+    "resumeText": "Infrastructure engineer skilled in Docker, Linux administration, and CI/CD automation pipelines. Some knowledge of Kubernetes.",
+    "expectedRequirements": ["Kubernetes", "Docker", "Terraform", "Linux", "CI/CD", "Prometheus"],
+    "expectedSkills": ["Docker", "Linux", "CI/CD", "Kubernetes"],
+    "expectedStatus": {
+      "Docker": "strong",
+      "Linux": "strong",
+      "CI/CD": "strong",
+      "Kubernetes": "needs_improvement",
+      "Terraform": "missing"
+    }
+  },
+  {
+    "id": "pair_05",
+    "jobTitle": "AI Application Engineer",
+    "company": "Cognitive AI",
+    "jobDescription": "Looking for an AI Engineer with Python, Machine Learning, PyTorch, Large Language Models, and LangChain.",
+    "resumeText": "Data scientist and developer with deep experience in Python, PyTorch, and Machine Learning algorithms. Created RAG applications using LangChain.",
+    "expectedRequirements": ["Python", "Machine Learning", "PyTorch", "Large Language Models", "LangChain"],
+    "expectedSkills": ["Python", "Machine Learning", "PyTorch", "LangChain"],
+    "expectedStatus": {
+      "Python": "strong",
+      "Machine Learning": "strong",
+      "PyTorch": "strong",
+      "LangChain": "good",
+      "Large Language Models": "missing"
+    }
+  }
+]
