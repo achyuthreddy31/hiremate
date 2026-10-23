@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
 import { User, Trash2, Save, AlertTriangle, ShieldCheck, Check } from 'lucide-react';
@@ -19,16 +19,31 @@ export default function ProfilePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const defaultLinks = { github: '', linkedin: '', portfolio: '' };
+
   useEffect(() => {
     fetchProfile();
   }, []);
 
+  const normalizeProfile = (data) => ({
+    name: data?.name || '',
+    email: data?.email || '',
+    currentLevel: data?.currentLevel || 'beginner',
+    skills: Array.isArray(data?.skills) ? data.skills : [],
+    links: {
+      github: data?.links?.github || '',
+      linkedin: data?.links?.linkedin || '',
+      portfolio: data?.links?.portfolio || ''
+    }
+  });
+
   const fetchProfile = async () => {
     try {
       const res = await apiClient.get('/users/profile');
-      if (res.data) {
-        setProfile(res.data);
-        setSkillsText((res.data.skills || []).join(', '));
+      if (res?.data) {
+        const normalized = normalizeProfile(res.data);
+        setProfile(normalized);
+        setSkillsText((normalized.skills || []).join(', '));
       }
     } catch (err) {
       setError(err.message || 'Failed to fetch user profile');
@@ -44,12 +59,29 @@ export default function ProfilePage() {
     setError('');
 
     try {
-      const parsedSkills = skillsText.split(',').map(s => s.trim()).filter(Boolean);
+      const parsedSkills = skillsText
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
       const payload = {
-        ...profile,
-        skills: parsedSkills
+        name: profile.name || '',
+        email: profile.email || '',
+        currentLevel: profile.currentLevel || 'beginner',
+        skills: parsedSkills,
+        links: {
+          github: profile.links?.github || '',
+          linkedin: profile.links?.linkedin || '',
+          portfolio: profile.links?.portfolio || ''
+        }
       };
-      await apiClient.put('/users/profile', payload);
+
+      const res = await apiClient.put('/users/profile', payload);
+      if (res?.data) {
+        const updated = normalizeProfile(res.data);
+        setProfile(updated);
+        setSkillsText((updated.skills || []).join(', '));
+      }
       setMessage('Candidate profile updated successfully!');
     } catch (err) {
       setError(err.message || 'Failed to update profile');
@@ -69,6 +101,17 @@ export default function ProfilePage() {
       }
     }
   };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="max-w-3xl mx-auto h-64 flex flex-col items-center justify-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <span className="text-xs text-[var(--text-muted)]">Loading candidate profile...</span>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -152,7 +195,7 @@ export default function ProfilePage() {
               <input
                 type="text"
                 value={profile.links?.github || ''}
-                onChange={(e) => setProfile(prev => ({ ...prev, links: { ...prev.links, github: e.target.value } }))}
+                onChange={(e) => setProfile(prev => ({ ...prev, links: { ...(prev.links || defaultLinks), github: e.target.value } }))}
                 placeholder="https://github.com/username"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -162,7 +205,7 @@ export default function ProfilePage() {
               <input
                 type="text"
                 value={profile.links?.linkedin || ''}
-                onChange={(e) => setProfile(prev => ({ ...prev, links: { ...prev.links, linkedin: e.target.value } }))}
+                onChange={(e) => setProfile(prev => ({ ...prev, links: { ...(prev.links || defaultLinks), linkedin: e.target.value } }))}
                 placeholder="https://linkedin.com/in/username"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />

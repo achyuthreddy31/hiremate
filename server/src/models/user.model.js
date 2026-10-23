@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   firebaseUid: {
@@ -76,7 +76,5 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-userSchema.index({ firebaseUid: 1 });
 
 export const User = mongoose.model('User', userSchema);

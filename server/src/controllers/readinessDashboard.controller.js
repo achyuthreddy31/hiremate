@@ -1,4 +1,4 @@
-﻿import { Application } from '../models/application.model.js';
+import { Application } from '../models/application.model.js';
 import { MatchReport } from '../models/matchReport.model.js';
 import { PracticeAttempt } from '../models/practiceAttempt.model.js';
 import { Resume } from '../models/resume.model.js';
@@ -299,6 +299,7 @@ export async function getDashboardOverview(req, res) {
       success: true,
       data: {
         application: {
+          _id: app._id,
           id: app._id,
           companyName: app.companyName,
           jobTitle: app.jobTitle,
@@ -320,13 +321,13 @@ export async function getDashboardOverview(req, res) {
         roadmap: roadmap ? {
           totalDays: roadmap.totalDays,
           completionPercentage: roadmap.completionPercentage,
-          pendingTasksCount: roadmap.tasks.filter(t => t.status === 'pending').length,
-          completedTasksCount: roadmap.tasks.filter(t => t.status === 'completed').length
+          pendingTasksCount: (roadmap.tasks || []).filter(t => t.status === 'pending').length,
+          completedTasksCount: (roadmap.tasks || []).filter(t => t.status === 'completed').length
         } : null,
         checklist: checklist ? {
           completionPercentage: checklist.completionPercentage,
-          totalItems: checklist.items.length,
-          completedItems: checklist.items.filter(i => i.status === 'completed').length
+          totalItems: (checklist.items || []).length,
+          completedItems: (checklist.items || []).filter(i => i.status === 'completed').length
         } : null
       }
     });

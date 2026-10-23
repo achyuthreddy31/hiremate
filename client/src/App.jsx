@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -17,6 +17,8 @@ import InterviewPrepPage from './pages/InterviewPrepPage';
 import ReadinessChecklistPage from './pages/ReadinessChecklistPage';
 import ProfilePage from './pages/ProfilePage';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 function ProtectedRoute({ children }) {
   const { currentUser, loading } = useAuth();
   if (loading) return null;
@@ -26,9 +28,10 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -57,5 +60,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }

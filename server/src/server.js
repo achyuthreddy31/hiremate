@@ -1,8 +1,15 @@
-﻿import app from './app.js';
+import app from './app.js';
 import { env } from './config/env.js';
+import { connectDB } from './config/db.js';
 
 const PORT = env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`HireMate AI API server running on port ${PORT} [${env.NODE_ENV}]`);
-});
+async function startServer() {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`HireMate AI API server running on port ${PORT} [${env.NODE_ENV}]`);
+  });
+}
+
+startServer();

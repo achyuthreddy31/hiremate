@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -16,7 +16,8 @@ import {
   RefreshCw,
   FileText,
   Target,
-  ListOrdered
+  ListOrdered,
+  Briefcase
 } from 'lucide-react';
 
 export default function ApplicationDashboardPage() {
@@ -96,10 +97,56 @@ export default function ApplicationDashboardPage() {
   }
 
   const app = data?.application;
+
+  if (error || !app) {
+    return (
+      <AppLayout currentApplication={app || null}>
+        <div className="max-w-2xl mx-auto py-12 px-4 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4 border border-amber-200 dark:border-amber-900">
+            <AlertCircle size={28} />
+          </div>
+          <h2 className="text-xl font-bold text-[var(--text-main)] mb-2">
+            {error ? 'Unable to load overview' : 'Target Application Not Found'}
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] mb-6 max-w-md mx-auto">
+            {error || 'The application you are trying to view could not be loaded or may not exist.'}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                setError('');
+                setLoading(true);
+                fetchOverview();
+              }}
+              className="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} />
+              Retry Loading
+            </button>
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-[var(--border-subtle)] text-[var(--text-main)] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const match = data?.jobMatchScore;
   const readiness = data?.interviewReadinessScore;
   const roadmap = data?.roadmap;
   const checklist = data?.checklist;
+
+  const validInterviewDate = app?.interviewDate && !isNaN(new Date(app.interviewDate).getTime())
+    ? new Date(app.interviewDate).toLocaleDateString()
+    : null;
+
+  const stageDisplay = typeof workflowStatus?.currentStage === 'string'
+    ? workflowStatus.currentStage.replace(/_/g, ' ')
+    : 'Processing';
 
   return (
     <AppLayout currentApplication={app}>
@@ -111,13 +158,13 @@ export default function ApplicationDashboardPage() {
               <Target size={12} />
               <span>Target Preparation Hub</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{app?.jobTitle}</h1>
-            <div className="text-indigo-200 text-sm font-semibold mt-0.5">{app?.companyName}</div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{app?.jobTitle || 'Target Role'}</h1>
+            <div className="text-indigo-200 text-sm font-semibold mt-0.5">{app?.companyName || 'Company'}</div>
 
-            {app?.interviewDate && (
+            {validInterviewDate && (
               <div className="flex items-center gap-2 text-xs text-indigo-300/80 mt-3">
                 <Calendar size={13} />
-                <span>Target Interview: {new Date(app.interviewDate).toLocaleDateString()}</span>
+                <span>Target Interview: {validInterviewDate}</span>
               </div>
             )}
           </div>
@@ -140,7 +187,7 @@ export default function ApplicationDashboardPage() {
           <div className="p-4 rounded-xl bg-[var(--bg-surface)] border border-indigo-200 dark:border-indigo-900/60 shadow-sm space-y-2">
             <div className="flex justify-between items-center text-xs">
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                Workflow Progress: {workflowStatus.currentStage?.replace(/_/g, ' ')}
+                Workflow Progress: {stageDisplay}
               </span>
               <span className="font-bold">{workflowStatus.progress || 0}%</span>
             </div>

@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const generationJobSchema = new mongoose.Schema({
   firebaseUid: {
@@ -31,8 +31,7 @@ const generationJobSchema = new mongoose.Schema({
   },
   idempotencyKey: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   stages: [{
     name: {

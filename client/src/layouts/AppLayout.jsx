@@ -1,7 +1,8 @@
-﻿import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { apiClient } from '../services/api';
 import {
   Briefcase,
   FileText,
@@ -27,24 +28,51 @@ export default function AppLayout({ children, currentApplication }) {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const { applicationId: routeAppId } = useParams();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeApp, setActiveApp] = useState(currentApplication || null);
+
+  // Determine active application ID priority: passed prop -> URL param -> cached in localStorage
+  const savedAppId = typeof window !== 'undefined' ? localStorage.getItem('hiremate_active_app_id') : null;
+  const activeAppId = currentApplication?._id || routeAppId || savedAppId || null;
+
+  useEffect(() => {
+    if (currentApplication?._id) {
+      setActiveApp(currentApplication);
+      localStorage.setItem('hiremate_active_app_id', currentApplication._id);
+      if (currentApplication.companyName) {
+        localStorage.setItem('hiremate_active_app_name', `${currentApplication.companyName} (${currentApplication.jobTitle || ''})`);
+      }
+    } else if (routeAppId) {
+      localStorage.setItem('hiremate_active_app_id', routeAppId);
+      // Fetch application details if not provided to keep widget populated
+      if (!activeApp || activeApp._id !== routeAppId) {
+        apiClient.get(`/applications/${routeAppId}`)
+          .then((res) => {
+            if (res.data) {
+              setActiveApp(res.data);
+              localStorage.setItem('hiremate_active_app_name', `${res.data.companyName} (${res.data.jobTitle || ''})`);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [currentApplication, routeAppId]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const appId = currentApplication?._id;
-
   const navItems = [
-    { label: 'Overview', path: appId ? `/app/${appId}/dashboard` : '/dashboard', icon: TrendingUp, badge: null },
-    { label: 'Target Job & Match', path: appId ? `/app/${appId}/match` : '/dashboard', icon: Briefcase, badge: 'Step 1' },
-    { label: 'Resume & Quality', path: appId ? `/app/${appId}/resume` : '/dashboard', icon: FileText, badge: 'Step 2' },
-    { label: 'Roadmap & Learning', path: appId ? `/app/${appId}/roadmap` : '/dashboard', icon: Compass, badge: 'Step 3' },
-    { label: 'Practice & Coding', path: appId ? `/app/${appId}/practice` : '/dashboard', icon: Cpu, badge: 'Step 4' },
-    { label: 'Company Research', path: appId ? `/app/${appId}/company` : '/dashboard', icon: BookOpen, badge: 'Step 5' },
-    { label: 'Interview Prep', path: appId ? `/app/${appId}/interview-prep` : '/dashboard', icon: HelpCircle, badge: 'Step 6' },
-    { label: 'Readiness & Checklist', path: appId ? `/app/${appId}/checklist` : '/dashboard', icon: CheckCircle, badge: 'Step 7' },
+    { label: 'Overview', path: activeAppId ? `/app/${activeAppId}/dashboard` : '/dashboard', icon: TrendingUp, badge: null },
+    { label: 'Target Job & Match', path: activeAppId ? `/app/${activeAppId}/match` : '/dashboard', icon: Briefcase, badge: 'Step 1' },
+    { label: 'Resume & Quality', path: activeAppId ? `/app/${activeAppId}/resume` : '/dashboard', icon: FileText, badge: 'Step 2' },
+    { label: 'Roadmap & Learning', path: activeAppId ? `/app/${activeAppId}/roadmap` : '/dashboard', icon: Compass, badge: 'Step 3' },
+    { label: 'Practice & Coding', path: activeAppId ? `/app/${activeAppId}/practice` : '/dashboard', icon: Cpu, badge: 'Step 4' },
+    { label: 'Company Research', path: activeAppId ? `/app/${activeAppId}/company` : '/dashboard', icon: BookOpen, badge: 'Step 5' },
+    { label: 'Interview Prep', path: activeAppId ? `/app/${activeAppId}/interview-prep` : '/dashboard', icon: HelpCircle, badge: 'Step 6' },
+    { label: 'Readiness & Checklist', path: activeAppId ? `/app/${activeAppId}/checklist` : '/dashboard', icon: CheckCircle, badge: 'Step 7' },
   ];
 
   return (
@@ -103,7 +131,7 @@ export default function AppLayout({ children, currentApplication }) {
           </div>
 
           {/* Current Target Application Widget */}
-          {currentApplication ? (
+          {activeApp ? (
             <div className="mb-4 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 relative overflow-hidden">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
@@ -117,18 +145,23 @@ export default function AppLayout({ children, currentApplication }) {
                   Switch
                 </Link>
               </div>
-              <div className="font-semibold text-sm truncate" title={currentApplication.companyName}>
-                {currentApplication.companyName}
+              <div className="font-semibold text-sm truncate" title={activeApp.companyName}>
+                {activeApp.companyName}
               </div>
-              <div className="text-xs text-[var(--text-muted)] truncate" title={currentApplication.jobTitle}>
-                {currentApplication.jobTitle}
+              <div className="text-xs text-[var(--text-muted)] truncate" title={activeApp.jobTitle}>
+                {activeApp.jobTitle}
               </div>
             </div>
           ) : (
             <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-[var(--border-subtle)]">
-              <div className="text-[11px] font-medium text-[var(--text-muted)] flex items-center gap-1.5">
-                <Layers size={13} className="text-indigo-500" />
-                <span>All Applications</span>
+              <div className="text-[11px] font-medium text-[var(--text-muted)] flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Layers size={13} className="text-indigo-500" />
+                  <span>All Applications</span>
+                </div>
+                <Link to="/applications/new" className="text-[10px] text-indigo-600 hover:underline font-bold">
+                  + Add
+                </Link>
               </div>
             </div>
           )}

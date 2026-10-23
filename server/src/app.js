@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -14,6 +14,7 @@ import practiceRoutes from './routes/practice.routes.js';
 import interviewPrepRoutes from './routes/interviewPrep.routes.js';
 import readinessDashboardRoutes from './routes/readinessDashboard.routes.js';
 import workflowRoutes from './routes/workflow.routes.js';
+import { checkDbConnection } from './middleware/dbCheck.middleware.js';
 
 const app = express();
 
@@ -42,16 +43,18 @@ app.use('/api/', generalLimiter);
 
 // API v1 Routes
 app.use('/api/v1', healthRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/applications', applicationRoutes);
-app.use('/api/v1/resumes', resumeRoutes);
+
+// Database-dependent routes: guard so queries fail-fast with 503 instead of buffering/hanging
+app.use('/api/v1/users', checkDbConnection, userRoutes);
+app.use('/api/v1/applications', checkDbConnection, applicationRoutes);
+app.use('/api/v1/resumes', checkDbConnection, resumeRoutes);
 app.use('/api/v1/jobs', jobAnalysisRoutes);
 app.use('/api/v1/company', companyResearchRoutes);
-app.use('/api/v1/roadmap', roadmapRoutes);
-app.use('/api/v1/practice', practiceRoutes);
-app.use('/api/v1/interview-prep', interviewPrepRoutes);
-app.use('/api/v1/readiness', readinessDashboardRoutes);
-app.use('/api/v1/workflow', workflowRoutes);
+app.use('/api/v1/roadmap', checkDbConnection, roadmapRoutes);
+app.use('/api/v1/practice', checkDbConnection, practiceRoutes);
+app.use('/api/v1/interview-prep', checkDbConnection, interviewPrepRoutes);
+app.use('/api/v1/readiness', checkDbConnection, readinessDashboardRoutes);
+app.use('/api/v1/workflow', checkDbConnection, workflowRoutes);
 
 // 404 Handler
 app.use((req, res) => {
