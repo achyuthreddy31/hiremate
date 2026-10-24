@@ -15,7 +15,6 @@
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "firebase": "^11.2.0",
-    "hiremate-ai-root": "file:..",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -29,6 +28,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
+    "@rollup/rollup-linux-x64-gnu": "^4.9.6",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
