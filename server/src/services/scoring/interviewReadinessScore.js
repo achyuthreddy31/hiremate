@@ -111,13 +111,13 @@ export function calculateInterviewReadinessScore({
   };
 
   // 6. Company Knowledge (10)
-  // Average of available values: latest company quiz score, and % of research sections reviewed
-  const quizScore = companyKnowledgeData?.quizScore;
+  // Determined by percentage of research hub sections reviewed
   const sectionsRatio = companyKnowledgeData?.sectionsReviewedRatio;
+  const quizScore = companyKnowledgeData?.quizScore;
   const availableCompanyVals = [];
 
-  if (typeof quizScore === 'number') availableCompanyVals.push(quizScore);
   if (typeof sectionsRatio === 'number') availableCompanyVals.push(Math.round(sectionsRatio * 100));
+  else if (typeof quizScore === 'number') availableCompanyVals.push(quizScore);
 
   const companyStarted = availableCompanyVals.length > 0;
   let companyScore = 0;
@@ -130,7 +130,9 @@ export function calculateInterviewReadinessScore({
     score: companyScore,
     weight: READINESS_SCORE_WEIGHTS.companyKnowledge,
     status: companyStarted ? 'active' : 'not_started',
-    explanation: companyStarted ? `Average of company quiz (${quizScore ?? 'N/A'}) and research reviewed (${typeof sectionsRatio === 'number' ? Math.round(sectionsRatio * 100) + '%' : 'N/A'}).` : 'Review company research sections and take the company quiz.'
+    explanation: companyStarted
+      ? `${typeof sectionsRatio === 'number' ? Math.round(sectionsRatio * 100) : (quizScore ?? 0)}% of Company Research Hub sections reviewed.`
+      : 'Review company research hub sections to build company context.'
   };
 
   // 7. Roadmap Completion (5)
@@ -167,6 +169,6 @@ export function calculateInterviewReadinessScore({
     totalAreas: 7,
     statusSummary: `${areasStartedCount} of 7 areas started`,
     categories,
-    disclaimer: 'HireMate AI Interview Readiness Score measures candidate preparation effort and completeness. It is never a chance of being selected.'
+    disclaimer: ''
   };
 }

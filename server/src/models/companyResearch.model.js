@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const companyResearchSchema = new mongoose.Schema({
   firebaseUid: {
@@ -20,8 +20,7 @@ const companyResearchSchema = new mongoose.Schema({
     information: { type: String, required: true },
     category: {
       type: String,
-      enum: ['overview', 'culture_values', 'tech_stack', 'interview_process', 'products_news', 'recent_developments'],
-      default: 'overview'
+      default: 'overview_milestones'
     },
     label: {
       type: String,
@@ -37,6 +36,7 @@ const companyResearchSchema = new mongoose.Schema({
     reviewed: Boolean,
     reviewedAt: Date
   }],
+  // Retained optionally for backwards schema compatibility
   quiz: [{
     question: String,
     options: [String],

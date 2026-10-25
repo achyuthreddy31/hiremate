@@ -1,6 +1,23 @@
 import { evaluateAdaptiveDifficulty } from './scoring/adaptiveDifficulty.js';
 import { callGeminiStructured, getGeminiClient } from './gemini.service.js';
 import { z } from 'zod';
+import vm from 'vm';
+import {
+  PRACTICE_CATEGORIES,
+  DIFFICULTY_MAP,
+  REVERSE_DIFFICULTY_MAP,
+  CURATED_MCQ_BANK,
+  CURATED_CODING_CHALLENGES,
+  generateProceduralCodingChallenge
+} from './practiceBank.js';
+
+export {
+  PRACTICE_CATEGORIES,
+  DIFFICULTY_MAP,
+  REVERSE_DIFFICULTY_MAP,
+  CURATED_MCQ_BANK,
+  CURATED_CODING_CHALLENGES
+};
 
 /**
  * Fisher-Yates array shuffling to avoid option position biases.
@@ -50,14 +67,9 @@ export function calculateTokenSimilarity(textA = '', textB = '') {
 /**
  * Checks whether a candidate question is an exact duplicate or near-duplicate
  * of any question in an existing list.
- *
- * @param {Object|string} candidate
- * @param {Array<Object|string>} existingList
- * @param {number} threshold - similarity threshold (default 0.75)
- * @returns {boolean}
  */
 export function isDuplicateOrNearDuplicate(candidate, existingList = [], threshold = 0.75) {
-  const candidateText = typeof candidate === 'string' ? candidate : candidate?.question || '';
+  const candidateText = typeof candidate === 'string' ? candidate : candidate?.question || candidate?.problemStatement || '';
   const normCandidate = normalizeQuestionText(candidateText);
   if (!normCandidate) return false;
 
@@ -66,7 +78,7 @@ export function isDuplicateOrNearDuplicate(candidate, existingList = [], thresho
     : '';
 
   for (const item of existingList) {
-    const existingText = typeof item === 'string' ? item : item?.question || '';
+    const existingText = typeof item === 'string' ? item : item?.question || item?.problemStatement || '';
     const normExisting = normalizeQuestionText(existingText);
     if (!normExisting) continue;
 
@@ -98,14 +110,20 @@ export function isDuplicateOrNearDuplicate(candidate, existingList = [], thresho
 }
 
 /**
- * Validates a practice question per Section 5.8:
- * - Exactly one correct option
- * - Distinct options
- * - Non-empty explanation
- * - Linked requirement
+ * Validates a practice question (MCQ or Coding Challenge):
  */
 export function validateQuestionFormat(q) {
-  if (!q || !q.question || !q.explanation || !q.requirementRef) return false;
+  if (!q) return false;
+
+  // Coding challenge validation
+  if (q.mode === 'coding_challenges' || q.type === 'code_writing') {
+    if (!q.question && !q.problemStatement) return false;
+    if (!Array.isArray(q.testCases) || q.testCases.length === 0) return false;
+    return true;
+  }
+
+  // Standard MCQ validation
+  if (!q.question || !q.explanation || !q.requirementRef) return false;
   if (!Array.isArray(q.options) || q.options.length < 2) return false;
 
   // Distinct options
@@ -119,12 +137,107 @@ export function validateQuestionFormat(q) {
 }
 
 /**
+ * Safely evaluates user solution against test cases in an isolated Node vm sandbox.
+ */
+export function evaluateCodingSolution(userCode = '', testCases = []) {
+  if (!userCode || !Array.isArray(testCases) || testCases.length === 0) {
+    return {
+      allPassed: false,
+      results: [],
+      failureReason: 'No code or test cases provided for validation'
+    };
+  }
+
+  const results = [];
+  let allPassed = true;
+
+  for (let i = 0; i < testCases.length; i++) {
+    const tc = testCases[i];
+    let passed = false;
+    let actualOutput = '';
+    let errorMessage = null;
+
+    try {
+      const sandbox = {
+        console: { log: () => {} },
+        result: undefined
+      };
+      vm.createContext(sandbox);
+
+      const runnerCode = `
+        ${userCode}
+        (function() {
+          let parsedInput;
+          try {
+            parsedInput = JSON.parse(${JSON.stringify(tc.input)});
+          } catch(e) {
+            parsedInput = ${JSON.stringify(tc.input)};
+          }
+          
+          let targetFn = null;
+          for (const key of Object.keys(this)) {
+            if (typeof this[key] === 'function' && key !== 'eval' && key !== 'Function') {
+              targetFn = this[key];
+            }
+          }
+          
+          if (typeof targetFn === 'function') {
+            if (typeof parsedInput === 'object' && parsedInput !== null && !Array.isArray(parsedInput)) {
+              result = targetFn(...Object.values(parsedInput));
+            } else {
+              result = targetFn(parsedInput);
+            }
+          } else {
+            result = eval(${JSON.stringify(userCode)});
+          }
+        })();
+      `;
+
+      const script = new vm.Script(runnerCode);
+      script.runInContext(sandbox, { timeout: 1500 });
+
+      actualOutput = JSON.stringify(sandbox.result);
+      const expectedNormalized = String(tc.expectedOutput).trim();
+
+      if (
+        actualOutput === expectedNormalized ||
+        String(sandbox.result).trim() === expectedNormalized ||
+        (expectedNormalized === 'MATCH_QUERY' && /select\s+/i.test(userCode))
+      ) {
+        passed = true;
+      } else {
+        allPassed = false;
+      }
+    } catch (err) {
+      allPassed = false;
+      errorMessage = err.message;
+      actualOutput = `Error: ${err.message}`;
+    }
+
+    results.push({
+      testCaseIndex: i + 1,
+      input: tc.input,
+      expected: tc.expectedOutput,
+      actual: actualOutput,
+      passed,
+      error: errorMessage
+    });
+  }
+
+  const failedCase = results.find(r => !r.passed);
+  const failureReason = failedCase
+    ? `Test Case ${failedCase.testCaseIndex} failed: Expected ${failedCase.expected}, but received ${failedCase.actual}`
+    : null;
+
+  return {
+    allPassed,
+    results,
+    failureReason
+  };
+}
+
+/**
  * Filters and selects distinct questions for a quiz or test session.
- * Guarantees that:
- * 1. No question ID appears more than once.
- * 2. No question text is a duplicate or near-duplicate of another in the session.
- * 3. Excludes any question ID in `excludeIds` and any question in `excludeQuestions`.
- * 4. Prioritizes matching target difficulty if specified.
  */
 export function selectDistinctQuestions({
   pool = [],
@@ -162,7 +275,7 @@ export function selectDistinctQuestions({
   for (const q of prioritized) {
     if (selected.length >= count) break;
     const qId = q._id ? String(q._id) : null;
-    const normText = normalizeQuestionText(q.question);
+    const normText = normalizeQuestionText(q.question || q.problemStatement);
 
     if (qId && selectedIds.has(qId)) continue;
     if (selectedNormTexts.has(normText)) continue;
@@ -177,427 +290,361 @@ export function selectDistinctQuestions({
 }
 
 /**
- * Canonical curated questions bank by skill.
- * Contains multiple distinct questions across difficulties and question types.
- */
-const CANONICAL_QUESTION_BANK = {
-  JavaScript: [
-    {
-      type: 'mcq',
-      question: 'Which statement accurately describes how the JavaScript event loop manages the microtask queue versus the macrotask queue?',
-      options: [
-        'All microtasks in the queue are executed immediately after the current call stack clears, before the next macrotask is dequeued.',
-        'Microtasks and macrotasks are interleaved strictly in a 1:1 alternating order.',
-        'Macrotasks take precedence over microtasks when handling network response callbacks.',
-        'The microtask queue is only evaluated once during window initialization.'
-      ],
-      correctAnswer: 'All microtasks in the queue are executed immediately after the current call stack clears, before the next macrotask is dequeued.',
-      explanation: 'Microtasks (Promises, queueMicrotask) run immediately following script execution and before yielding to rendering or the macrotask queue (setTimeout, setInterval).',
-      difficulty: 'medium',
-      expectedTimeSeconds: 50
-    },
-    {
-      type: 'output_prediction',
-      question: 'What is the exact console output of this JavaScript code snippet regarding closure scoping in asynchronous loops?',
-      codeSnippet: 'for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}',
-      options: ['3 3 3', '0 1 2', 'undefined undefined undefined', 'ReferenceError'],
-      correctAnswer: '3 3 3',
-      explanation: 'Variables declared with "var" are function-scoped, not block-scoped. By the time the timeout callbacks run, the loop has completed with i = 3.',
-      difficulty: 'easy',
-      expectedTimeSeconds: 40
-    },
-    {
-      type: 'debugging',
-      question: 'In JavaScript, why does comparing two identical object literals with strict equality (({ a: 1 } === { a: 1 })) return false?',
-      options: [
-        'Objects are compared by heap memory reference rather than structural value equality.',
-        'Strict equality cannot evaluate keys with numerical values.',
-        'Object literals must first be serialized using JSON.stringify to be compared.',
-        'JavaScript engine throws a silent TypeCoercionError.'
-      ],
-      correctAnswer: 'Objects are compared by heap memory reference rather than structural value equality.',
-      explanation: 'In JavaScript, non-primitive data types (objects, arrays, functions) are compared by reference identity in memory, not structural equality.',
-      difficulty: 'easy',
-      expectedTimeSeconds: 35
-    },
-    {
-      type: 'code_reading',
-      question: 'What is the return value of Promise.all() when one of the input promises in the array rejects?',
-      options: [
-        'It immediately rejects with the reason of the first promise that rejected (fail-fast).',
-        'It waits for all promises to settle and returns an array of status objects.',
-        'It ignores the rejected promise and resolves with the remaining fulfilled promises.',
-        'It automatically retries the rejected promise up to 3 times.'
-      ],
-      correctAnswer: 'It immediately rejects with the reason of the first promise that rejected (fail-fast).',
-      explanation: 'Promise.all has fail-fast semantics; it rejects immediately upon the first rejection. Promise.allSettled is used when all outcomes are needed.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    },
-    {
-      type: 'output_prediction',
-      question: 'What will be printed to the console when executing the following snippet demonstrating JavaScript array mutation?',
-      codeSnippet: 'const a = [1, 2, 3];\nconst b = a.concat(4);\nb.push(5);\nconsole.log(a.length, b.length);',
-      options: ['3 5', '4 5', '5 5', '3 4'],
-      correctAnswer: '3 5',
-      explanation: 'Array.prototype.concat creates and returns a shallow copy without mutating the original array "a". Therefore a.length remains 3 while b becomes length 5.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    }
-  ],
-  TypeScript: [
-    {
-      type: 'mcq',
-      question: 'In TypeScript, what is the key difference between the "unknown" and "any" top types?',
-      options: [
-        '"unknown" enforces type-checking and narrowing before properties or methods can be accessed, whereas "any" turns off type checking.',
-        '"unknown" can only be assigned to string and number types.',
-        '"any" requires explicit runtime type guards, while "unknown" does not.',
-        '"unknown" is compiled to a specialized runtime symbol, while "any" is removed.'
-      ],
-      correctAnswer: '"unknown" enforces type-checking and narrowing before properties or methods can be accessed, whereas "any" turns off type checking.',
-      explanation: '"unknown" is the type-safe counterpart of "any". Anything is assignable to unknown, but unknown is not assignable to anything else without type narrowing.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    },
-    {
-      type: 'debugging',
-      question: 'Which TypeScript utility type constructs a type with all properties of Type set to optional?',
-      options: [
-        'Partial<T>',
-        'Required<T>',
-        'Readonly<T>',
-        'Record<K, T>'
-      ],
-      correctAnswer: 'Partial<T>',
-      explanation: 'Partial<T> returns a type where every field in T is marked with the optional "?" modifier.',
-      difficulty: 'easy',
-      expectedTimeSeconds: 30
-    },
-    {
-      type: 'code_reading',
-      question: 'What does the TypeScript "keyof" operator produce when applied to an interface?',
-      options: [
-        'A union type of known, public property names of that type.',
-        'An array containing runtime property name strings.',
-        'A boolean indicating whether a key exists in an object.',
-        'A generic map interface mapping keys to boolean values.'
-      ],
-      correctAnswer: 'A union type of known, public property names of that type.',
-      explanation: 'The keyof operator produces a string or numeric literal union of keys of the provided object type.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 40
-    }
-  ],
-  React: [
-    {
-      type: 'mcq',
-      question: 'When should you pass a cleanup function as the return value of a React useEffect hook?',
-      options: [
-        'To unsubscribe from subscriptions, clear timers, or abort in-flight network requests when the component unmounts or dependencies change.',
-        'To force the component to immediately trigger a synchronous DOM re-paint.',
-        'To purge component state from the browser localStorage.',
-        'To reset all ancestor component props back to their default values.'
-      ],
-      correctAnswer: 'To unsubscribe from subscriptions, clear timers, or abort in-flight network requests when the component unmounts or dependencies change.',
-      explanation: 'The returned cleanup function is executed before the effect is re-run and when the component unmounts, preventing memory leaks and stale event listeners.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    },
-    {
-      type: 'debugging',
-      question: 'Why must React state never be mutated directly (e.g., state.items.push(newItem))?',
-      options: [
-        'Direct mutation preserves the previous object reference, causing React shallow equality checks to skip re-rendering.',
-        'Direct mutation throws an uncatchable browser DOMException.',
-        'React state stores data in immutable WebAssembly memory buffers.',
-        'Component props are automatically overwritten whenever state is mutated.'
-      ],
-      correctAnswer: 'Direct mutation preserves the previous object reference, causing React shallow equality checks to skip re-rendering.',
-      explanation: 'React compares previous and next states using Object.is. Mutating in place keeps the reference identical, so React assumes nothing changed.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    },
-    {
-      type: 'output_prediction',
-      question: 'In React, what is the output in the console after clicking a button that calls setVal(val + 1) twice synchronously?',
-      codeSnippet: 'const [val, setVal] = useState(0);\nconst handleClick = () => {\n  setVal(val + 1);\n  setVal(val + 1);\n};',
-      options: [
-        'val becomes 1 in the next render, because both calls read from the same render snapshot.',
-        'val becomes 2 in the next render, because state setters are always synchronous.',
-        'val becomes 0, because multiple setter calls cancel each other.',
-        'A MaximumUpdateDepthExceeded error is thrown.'
-      ],
-      correctAnswer: 'val becomes 1 in the next render, because both calls read from the same render snapshot.',
-      explanation: 'In the render snapshot, val is 0. Both calls execute setVal(0 + 1). To increment twice, the functional updater form setVal(prev => prev + 1) must be used.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 50
-    },
-    {
-      type: 'code_reading',
-      question: 'What is the primary role of React.useMemo hook?',
-      options: [
-        'Cache the calculated result of an expensive computation between renders until its dependencies change.',
-        'Persist component state across page reloads in sessionStorage.',
-        'Prevent a component from receiving new props from its parent.',
-        'Automatically compile JSX templates into optimized WebGL shaders.'
-      ],
-      correctAnswer: 'Cache the calculated result of an expensive computation between renders until its dependencies change.',
-      explanation: 'useMemo memoizes the result of a function call to avoid expensive recalculations on every render when dependencies have not changed.',
-      difficulty: 'easy',
-      expectedTimeSeconds: 35
-    }
-  ],
-  'Node.js': [
-    {
-      type: 'mcq',
-      question: 'How should high-throughput streaming in Node.js handle the scenario where the readable stream is faster than the writable stream?',
-      options: [
-        'By honoring backpressure via pipe(), pipeline(), or checking stream.write() return value and waiting for the "drain" event.',
-        'By allocating an unbounded V8 heap buffer to store pending chunks in memory.',
-        'By spawning a separate child process for every incoming stream chunk.',
-        'By switching the HTTP server to synchronous blocking filesystem calls.'
-      ],
-      correctAnswer: 'By honoring backpressure via pipe(), pipeline(), or checking stream.write() return value and waiting for the "drain" event.',
-      explanation: 'Handling backpressure prevents memory exhaustion by pausing the readable stream when the writable internal buffer is full until the "drain" event fires.',
-      difficulty: 'hard',
-      expectedTimeSeconds: 55
-    },
-    {
-      type: 'debugging',
-      question: 'What happens if an asynchronous Promise rejects in Node.js without an attached .catch() or unhandledRejection listener?',
-      options: [
-        'Node.js emits an unhandledRejection event and terminates the process with a non-zero exit code.',
-        'The exception is silently swallowed and execution continues normally.',
-        'The event loop resets all active network sockets to prevent corruption.',
-        'Node.js restarts the application automatically using cluster mode.'
-      ],
-      correctAnswer: 'Node.js emits an unhandledRejection event and terminates the process with a non-zero exit code.',
-      explanation: 'Modern Node.js crashes the process on unhandled promise rejections to adhere to the fail-fast principle and avoid corrupted state.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 40
-    },
-    {
-      type: 'scenario',
-      question: 'In a Node.js API server, how can CPU-intensive computational tasks (such as image resizing or crypto mining) be prevented from blocking HTTP request handling?',
-      options: [
-        'Offload the intensive computation to Worker Threads or an external background queue worker.',
-        'Increase the Node.js memory limit using --max-old-space-size.',
-        'Wrap the computational code in process.nextTick() loops.',
-        'Execute the computation inside a synchronous while loop.'
-      ],
-      correctAnswer: 'Offload the intensive computation to Worker Threads or an external background queue worker.',
-      explanation: 'Node.js runs JS on a single event-loop thread. Long-running synchronous CPU operations block the loop, starving all I/O unless offloaded to worker threads or external worker services.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 50
-    }
-  ],
-  Python: [
-    {
-      type: 'output_prediction',
-      question: 'What is the console output of this Python snippet with a default mutable argument?',
-      codeSnippet: 'def append_val(val, target=[]):\n    target.append(val)\n    return target\n\nprint(append_val(1), append_val(2))',
-      options: [
-        '[1, 2] [1, 2]',
-        '[1] [2]',
-        '[1] [1, 2]',
-        'TypeError: default argument cannot be mutated'
-      ],
-      correctAnswer: '[1, 2] [1, 2]',
-      explanation: 'In Python, default arguments are evaluated once at function definition time, not every time the function is called. The shared list accumulates both values.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 50
-    },
-    {
-      type: 'mcq',
-      question: 'In Python CPython, what is the role of the Global Interpreter Lock (GIL)?',
-      options: [
-        'A mutex that protects access to Python objects, preventing multiple native threads from executing Python bytecodes simultaneously.',
-        'A security sandbox that disables unauthorized filesystem access.',
-        'A compiler flag that converts Python scripts into native C binaries.',
-        'A database lock used by SQLite when running multi-threaded queries.'
-      ],
-      correctAnswer: 'A mutex that protects access to Python objects, preventing multiple native threads from executing Python bytecodes simultaneously.',
-      explanation: 'The GIL ensures thread-safe memory management in CPython by permitting only one native thread to hold control of the Python interpreter at any given instant.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    }
-  ],
-  SQL: [
-    {
-      type: 'sql',
-      question: 'What is the performance consequence of using a leading wildcard in a SQL LIKE query (e.g., WHERE username LIKE "%smith")?',
-      options: [
-        'The query planner cannot utilize a standard B-tree index on username, forcing a full table scan.',
-        'The query is automatically cached in memory, doubling query throughput.',
-        'The query fails with a syntax error because wildcards can only appear at the end.',
-        'The database engine promotes the transaction to an exclusive lock.'
-      ],
-      correctAnswer: 'The query planner cannot utilize a standard B-tree index on username, forcing a full table scan.',
-      explanation: 'B-Tree indexes sort entries sequentially. A leading wildcard obscures the starting prefix, making index traversal impossible and necessitating a full table scan.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    },
-    {
-      type: 'mcq',
-      question: 'Which SQL transaction isolation level prevents dirty reads, non-repeatable reads, and phantom reads?',
-      options: [
-        'SERIALIZABLE',
-        'REPEATABLE READ',
-        'READ COMMITTED',
-        'READ UNCOMMITTED'
-      ],
-      correctAnswer: 'SERIALIZABLE',
-      explanation: 'SERIALIZABLE is the strictest isolation level, completely isolating concurrent transactions and eliminating phantom reads, non-repeatable reads, and dirty reads.',
-      difficulty: 'hard',
-      expectedTimeSeconds: 40
-    }
-  ],
-  'System Design': [
-    {
-      type: 'scenario',
-      question: 'When designing a distributed rate limiter for a public REST API, what algorithmic strategy avoids burst traffic while allowing controlled token consumption?',
-      options: [
-        'Token Bucket or Leaky Bucket algorithm backed by Redis with atomic Lua scripts.',
-        'Storing request counts in client-side localStorage cookies.',
-        'Re-starting the server process whenever traffic exceeds 500 requests per minute.',
-        'Performing synchronous database table count queries on every incoming HTTP request.'
-      ],
-      correctAnswer: 'Token Bucket or Leaky Bucket algorithm backed by Redis with atomic Lua scripts.',
-      explanation: 'Token bucket allows smooth handling of traffic bursts while capping sustained throughput. Backing it with Redis and Lua scripts guarantees atomic, distributed operations.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 50
-    },
-    {
-      type: 'mcq',
-      question: 'According to the CAP Theorem, what tradeoff must a distributed data store make during a network partition (P)?',
-      options: [
-        'Choose between Consistency (C) and Availability (A).',
-        'Choose between Performance (P) and Latency (L).',
-        'Consistency and Availability are both guaranteed regardless of partitions.',
-        'Network partitions can be eliminated entirely using multi-region load balancers.'
-      ],
-      correctAnswer: 'Choose between Consistency (C) and Availability (A).',
-      explanation: 'When network partitions occur, a distributed system must decide whether to continue serving potentially stale or unconfirmed writes (Availability) or reject requests until synchronization occurs (Consistency).',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    }
-  ],
-  Algorithms: [
-    {
-      type: 'code_reading',
-      question: 'What is the worst-case time complexity of finding an element in an unsorted array of size N versus a balanced binary search tree of size N?',
-      options: [
-        'O(N) for the unsorted array and O(log N) for the balanced BST.',
-        'O(log N) for the unsorted array and O(1) for the balanced BST.',
-        'O(1) for both data structures.',
-        'O(N^2) for the unsorted array and O(N) for the balanced BST.'
-      ],
-      correctAnswer: 'O(N) for the unsorted array and O(log N) for the balanced BST.',
-      explanation: 'Searching an unsorted array requires scanning up to N elements (linear O(N)). In a balanced BST, each comparison halves the search space (logarithmic O(log N)).',
-      difficulty: 'easy',
-      expectedTimeSeconds: 35
-    },
-    {
-      type: 'debugging',
-      question: 'In binary search implementation on a 32-bit integer array, why is calculating mid as "low + Math.floor((high - low) / 2)" preferred over "Math.floor((low + high) / 2)"?',
-      options: [
-        'It avoids potential integer overflow when low + high exceeds the maximum integer capacity in fixed-width languages.',
-        'It runs twice as fast by skipping fractional rounding in the CPU ALU.',
-        'It allows the search to execute in O(1) constant time.',
-        'It is required by the ECMAScript 6 standard for typed arrays.'
-      ],
-      correctAnswer: 'It avoids potential integer overflow when low + high exceeds the maximum integer capacity in fixed-width languages.',
-      explanation: 'When low and high are very large, their sum can overflow fixed-width 32-bit signed integers. Subtracting before dividing avoids this overflow.',
-      difficulty: 'medium',
-      expectedTimeSeconds: 45
-    }
-  ]
-};
-
-/**
  * Procedural variation generator for any skill or topic.
- * Generates distinct questions with unique angles (architecture, reliability, optimization, security, debugging).
  */
 function createProceduralVariations(skill, difficulty = 'medium') {
-  const variations = [
+  return [
     {
       type: 'debugging',
-      question: `When profiling an application utilizing ${skill}, what is the most effective approach to identify and resolve high CPU contention?`,
-      codeSnippet: `// Example monitoring profile for ${skill}\nconst profile = startCpuProfile('${skill}');\nexecuteWorkload();\nconst report = profile.stop();\nconsole.log(report.topFunctionsBySelfTime());`,
+      question: 'When profiling an application utilizing ' + skill + ', what is the most effective approach to identify and resolve high CPU contention?',
+      codeSnippet: '// Performance profile checkpoint for ' + skill + '\nconst profile = startCpuProfile("' + skill + '");\nexecuteWorkload();\nconst report = profile.stop();\nconsole.log(report.topFunctionsBySelfTime());',
       options: [
-        `Analyze call-tree self-time to isolate hot synchronous loops and optimize algorithmic complexity in ${skill}.`,
-        `Reboot the production host every 15 minutes to reset thread priority.`,
-        `Eliminate all function boundaries by inlining the entire codebase into a single file.`,
-        `Disable all log ingestion and error reporting pipelines.`
+        'Analyze call-tree self-time to isolate hot synchronous loops and optimize algorithmic complexity in ' + skill + '.',
+        'Reboot the production host every 15 minutes to reset thread priority.',
+        'Eliminate all function boundaries by inlining the entire codebase into a single file.',
+        'Disable all log ingestion and error reporting pipelines.'
       ],
-      correctAnswer: `Analyze call-tree self-time to isolate hot synchronous loops and optimize algorithmic complexity in ${skill}.`,
-      explanation: `Profiling self-time reveals exactly where the execution thread spends CPU cycles, pointing directly to computational bottlenecks in ${skill}.`,
-      difficulty,
+      correctAnswer: 'Analyze call-tree self-time to isolate hot synchronous loops and optimize algorithmic complexity in ' + skill + '.',
+      explanation: 'Profiling self-time reveals exactly where execution threads spend CPU cycles, pointing directly to computational bottlenecks in ' + skill + '.',
+      difficulty: 'medium',
       expectedTimeSeconds: 50
     },
     {
       type: 'scenario',
-      question: `An engineering team is scaling a service built with ${skill}. Which pattern best mitigates downstream service degradation during transient network faults?`,
+      question: 'An engineering team is scaling a service built with ' + skill + '. Which pattern best mitigates downstream service degradation during transient network faults?',
       options: [
-        `Implement a Circuit Breaker pattern with exponential backoff and jitter for outbound calls in ${skill}.`,
-        `Immediately retry all failed network requests in an infinite synchronous while loop.`,
-        `Suppress all HTTP status codes other than 200 OK.`,
-        `Route all external API traffic through a single unmonitored proxy server without timeouts.`
+        'Implement a Circuit Breaker pattern with exponential backoff and jitter for outbound calls in ' + skill + '.',
+        'Immediately retry all failed network requests in an infinite synchronous while loop.',
+        'Suppress all HTTP status codes other than 200 OK.',
+        'Route all external API traffic through a single unmonitored proxy server without timeouts.'
       ],
-      correctAnswer: `Implement a Circuit Breaker pattern with exponential backoff and jitter for outbound calls in ${skill}.`,
-      explanation: `Circuit breakers prevent cascading system failure by temporarily halting requests to an unhealthy dependency, giving it time to recover.`,
-      difficulty,
+      correctAnswer: 'Implement a Circuit Breaker pattern with exponential backoff and jitter for outbound calls in ' + skill + '.',
+      explanation: 'Circuit breakers prevent cascading system failure by temporarily halting requests to an unhealthy dependency, giving it time to recover.',
+      difficulty: 'medium',
       expectedTimeSeconds: 50
     },
     {
       type: 'output_prediction',
-      question: `Consider the following operational flow implemented in ${skill}. What is the expected status output when processing an array with empty elements?`,
-      codeSnippet: `function checkIntegrity(items) {\n  const valid = items.filter(Boolean);\n  return valid.length === items.length ? 'ALL_VALID' : 'HAS_EMPTY';\n}\nconsole.log(checkIntegrity(['data', '', 'verified']));`,
+      question: 'Consider the following operational flow implemented in ' + skill + '. What is the expected status output when processing an array with empty elements?',
+      codeSnippet: 'function checkIntegrity(items) {\n  const valid = items.filter(Boolean);\n  return valid.length === items.length ? "ALL_VALID" : "HAS_EMPTY";\n}\nconsole.log(checkIntegrity(["data", "", "verified"]));',
       options: ['HAS_EMPTY', 'ALL_VALID', 'undefined', 'TypeError'],
       correctAnswer: 'HAS_EMPTY',
-      explanation: `The empty string '' is falsy in standard conditional evaluations, so filter(Boolean) drops it, making valid.length (2) !== items.length (3).`,
+      explanation: 'The empty string "" is falsy in standard conditional evaluations, so filter(Boolean) drops it, making valid.length (2) !== items.length (3).',
       difficulty: 'easy',
       expectedTimeSeconds: 40
     },
     {
       type: 'mcq',
-      question: `What is a primary architectural principle for ensuring automated testability when building components with ${skill}?`,
+      question: 'What is a primary architectural principle for ensuring automated testability when building components with ' + skill + '?',
       options: [
-        `Adhering to Dependency Inversion by injecting dependencies rather than hardcoding singleton instances within ${skill} modules.`,
-        `Hardcoding all database credentials directly into test files for convenience.`,
-        `Removing all assertions from test suites so CI pipelines always succeed.`,
-        `Writing unit tests that directly query external third-party production payment gateways.`
+        'Adhering to Dependency Inversion by injecting dependencies rather than hardcoding singleton instances within ' + skill + ' modules.',
+        'Hardcoding all database credentials directly into test files for convenience.',
+        'Removing all assertions from test suites so CI pipelines always succeed.',
+        'Writing unit tests that directly query external third-party production payment gateways.'
       ],
-      correctAnswer: `Adhering to Dependency Inversion by injecting dependencies rather than hardcoding singleton instances within ${skill} modules.`,
-      explanation: `Dependency injection allows mock and stub implementations to be swapped in easily during testing, creating isolated and deterministic tests.`,
-      difficulty,
+      correctAnswer: 'Adhering to Dependency Inversion by injecting dependencies rather than hardcoding singleton instances within ' + skill + ' modules.',
+      explanation: 'Dependency injection allows mock and stub implementations to be swapped in easily during testing, creating isolated and deterministic tests.',
+      difficulty: 'medium',
       expectedTimeSeconds: 45
     },
     {
       type: 'code_reading',
-      question: `How should idempotent operations be implemented for state-modifying requests in an architecture using ${skill}?`,
+      question: 'How should idempotent operations be implemented for state-modifying requests in an architecture using ' + skill + '?',
       options: [
-        `Attach a unique client-generated Idempotency Key header and store transaction outcomes in a fast cache to deduplicate retries.`,
-        `Disable client retries completely across the entire distributed network.`,
-        `Generate a new random primary key on every incoming HTTP POST without checking existing records.`,
-        `Rely exclusively on browser caching headers (Cache-Control: public).`
+        'Attach a unique client-generated Idempotency Key header and store transaction outcomes in a fast cache to deduplicate retries.',
+        'Disable client retries completely across the entire distributed network.',
+        'Generate a new random primary key on every incoming HTTP POST without checking existing records.',
+        'Rely exclusively on browser caching headers (Cache-Control: public).'
       ],
-      correctAnswer: `Attach a unique client-generated Idempotency Key header and store transaction outcomes in a fast cache to deduplicate retries.`,
-      explanation: `Idempotency keys ensure that network retries execute the underlying mutation at most once, returning the cached response for duplicate requests.`,
+      correctAnswer: 'Attach a unique client-generated Idempotency Key header and store transaction outcomes in a fast cache to deduplicate retries.',
+      explanation: 'Idempotency keys ensure that network retries execute the underlying mutation at most once, returning the cached response for duplicate requests.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'scenario',
+      question: 'When designing high-concurrency data persistence with ' + skill + ', how can the Thundering Herd cache stampede problem be prevented?',
+      options: [
+        'Utilize mutex locking or probabilistic early recomputation (XFetch) when cached values near expiration.',
+        'Clear the entire database cache every minute on a cron job.',
+        'Send all concurrent requests directly to the database without caching.',
+        'Increase HTTP request timeouts to 60 minutes.'
+      ],
+      correctAnswer: 'Utilize mutex locking or probabilistic early recomputation (XFetch) when cached values near expiration.',
+      explanation: 'Locking ensures only one process recomputes a missed cache key while others wait, preventing database overload.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'debugging',
+      question: 'In an enterprise microservice implemented in ' + skill + ', why is structured JSON logging with correlation IDs superior to unstructured string printing?',
+      options: [
+        'Correlation IDs trace a request across distributed boundaries, and structured keys allow log aggregators to filter and query without regex.',
+        'JSON strings reduce hard drive sector size.',
+        'Standard print statements cannot be read by Docker containers.',
+        'Structured logs automatically rewrite failed SQL transactions.'
+      ],
+      correctAnswer: 'Correlation IDs trace a request across distributed boundaries, and structured keys allow log aggregators to filter and query without regex.',
+      explanation: 'Structured logs provide deterministic keys (traceId, level, service) that log analytics platforms index for distributed tracing.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'mcq',
+      question: 'How does memory leak detection operate when auditing long-running background workers built with ' + skill + '?',
+      options: [
+        'Comparing differential heap snapshots across garbage collection cycles to identify retainers that grow unbounded over time.',
+        'Monitoring CPU temperature only.',
+        'Assuming memory never leaks if unit tests pass.',
+        'Relying on operating system swap space expansion.'
+      ],
+      correctAnswer: 'Comparing differential heap snapshots across garbage collection cycles to identify retainers that grow unbounded over time.',
+      explanation: 'Heap snapshot comparison identifies objects that should have been deallocated but remain referenced by global variables or unclosed closures.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'scenario',
+      question: 'In high-throughput systems utilizing ' + skill + ', why is connection pooling essential when connecting to databases or external services?',
+      options: [
+        'Reusing established TCP connections eliminates the high latency and CPU overhead of repeated TLS handshakes and socket setup.',
+        'Connection pooling bypasses database password authentication.',
+        'It converts relational SQL tables into static text files.',
+        'It disables transaction isolation levels.'
+      ],
+      correctAnswer: 'Reusing established TCP connections eliminates the high latency and CPU overhead of repeated TLS handshakes and socket setup.',
+      explanation: 'Establishing network connections is computationally expensive. Connection pooling maintains a ready pool of active sockets.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'debugging',
+      question: 'What is the primary risk of using unbounded in-memory queues for asynchronous background tasks in ' + skill + '?',
+      options: [
+        'During traffic spikes, queued items consume available RAM until the host process crashes with Out-Of-Memory (OOM).',
+        'Unbounded queues cause hard drive fragmentation.',
+        'Process priority is automatically downgraded to idle.',
+        'Unbounded queues trigger premature SSL certificate expiration.'
+      ],
+      correctAnswer: 'During traffic spikes, queued items consume available RAM until the host process crashes with Out-Of-Memory (OOM).',
+      explanation: 'Without backpressure or bounds, consumer lag causes queue memory to balloon, leading to process termination.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'code_reading',
+      question: 'When evaluating database index selectivity in systems designed with ' + skill + ', which column is the optimal leading column for a composite B-Tree index?',
+      options: [
+        'The column with the highest cardinality (most unique values) that appears consistently in equality filters.',
+        'A boolean column with only two distinct values.',
+        'Any column that is null for 90% of rows.',
+        'The column with the longest text string.'
+      ],
+      correctAnswer: 'The column with the highest cardinality (most unique values) that appears consistently in equality filters.',
+      explanation: 'High cardinality columns narrow down matched rows fastest, minimizing secondary index lookups.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'scenario',
+      question: 'How should distributed microservices built with ' + skill + ' implement graceful shutdown when receiving SIGTERM from orchestrators like Kubernetes?',
+      options: [
+        'Stop accepting new ingress requests, complete active in-flight transactions within a grace timeout, and close database connections.',
+        'Immediately kill all threads and drop active database connections.',
+        'Reboot the entire host cluster.',
+        'Ignore the signal indefinitely.'
+      ],
+      correctAnswer: 'Stop accepting new ingress requests, complete active in-flight transactions within a grace timeout, and close database connections.',
+      explanation: 'Graceful shutdown ensures clients do not receive abrupt connection resets and database transactions commit cleanly.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'mcq',
+      question: 'What strategy prevents the N+1 query problem when loading related entities in applications using ' + skill + '?',
+      options: [
+        'Batch fetching related records using SQL IN clauses (eager loading or data loaders) instead of executing a query per item.',
+        'Executing queries inside synchronous while loops.',
+        'Disabling database foreign key constraints.',
+        'Setting the query timeout to 0 milliseconds.'
+      ],
+      correctAnswer: 'Batch fetching related records using SQL IN clauses (eager loading or data loaders) instead of executing a query per item.',
+      explanation: 'Batch loading consolidates N child queries into a single batched query, preventing database connection roundtrip overhead.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'debugging',
+      question: 'Why is using Math.random() or non-cryptographic PRNGs unsafe for generating session tokens or password reset keys in ' + skill + '?',
+      options: [
+        'Standard PRNGs are deterministic with small internal state, allowing attackers to predict future tokens after observing previous outputs.',
+        'Non-crypto PRNGs cannot generate strings longer than 4 characters.',
+        'They corrupt the browser cookies jar.',
+        'Operating systems reject non-crypto random numbers.'
+      ],
+      correctAnswer: 'Standard PRNGs are deterministic with small internal state, allowing attackers to predict future tokens after observing previous outputs.',
+      explanation: 'Cryptographically secure pseudorandom number generators (CSPRNG) use entropy sources with high unpredictability.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'scenario',
+      question: 'In a distributed architecture using ' + skill + ', how does the Token Bucket algorithm enforce rate limiting across client requests?',
+      options: [
+        'Tokens are replenished at a constant rate into a fixed-capacity bucket; each request consumes a token, rejecting traffic if the bucket is empty.',
+        'Tokens are stored in browser localStorage only.',
+        'All requests are delayed by exactly 10 seconds.',
+        'Tokens are deducted only when queries throw exceptions.'
+      ],
+      correctAnswer: 'Tokens are replenished at a constant rate into a fixed-capacity bucket; each request consumes a token, rejecting traffic if the bucket is empty.',
+      explanation: 'Token bucket permits short bursts of traffic up to bucket capacity while enforcing a strict long-term average throughput rate.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'scenario',
+      question: 'When managing multi-service workflows in ' + skill + ', why is the Saga pattern preferred over Two-Phase Commit (2PC) in high-scale microservices?',
+      options: [
+        'Sagas avoid distributed synchronous locks across microservices by executing local transactions coordinated with compensating events.',
+        '2PC is completely forbidden by the HTTP/2 specification.',
+        'Sagas eliminate the need for databases entirely.',
+        '2PC requires all servers to be running in the exact same physical server rack.'
+      ],
+      correctAnswer: 'Sagas avoid distributed synchronous locks across microservices by executing local transactions coordinated with compensating events.',
+      explanation: '2PC holds locks until all participants vote, causing high latency and risk of blocking; Sagas manage consistency via asynchronous compensating actions.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'debugging',
+      question: 'How can concurrent database deadlocks between transaction threads in ' + skill + ' be systematically eliminated?',
+      options: [
+        'Enforce a strict, uniform global ordering for acquiring table and row locks across all application transactions.',
+        'Remove all primary keys and foreign key constraints from the schema.',
+        'Run all database read queries inside non-terminating while loops.',
+        'Increase lock timeout to 24 hours.'
+      ],
+      correctAnswer: 'Enforce a strict, uniform global ordering for acquiring table and row locks across all application transactions.',
+      explanation: 'Deadlocks occur when two transactions request locks in circular order; enforcing monotonic lock acquisition order breaks the circular wait condition.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'scenario',
+      question: 'When implementing a write-through vs cache-aside strategy in ' + skill + ', what is the primary benefit of cache invalidation over cache updates on write?',
+      options: [
+        'Invalidation prevents race conditions where concurrent updates arrive out of order at the cache, ensuring the next read fetches authoritative database state.',
+        'Invalidation increases database disk usage.',
+        'Cache updates consume zero network bandwidth.',
+        'Invalidating a key deletes the database table row permanently.'
+      ],
+      correctAnswer: 'Invalidation prevents race conditions where concurrent updates arrive out of order at the cache, ensuring the next read fetches authoritative database state.',
+      explanation: 'Concurrent writes can arrive out-of-order at the cache; invalidating the key forces a clean cache miss and authoritative reload.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'mcq',
+      question: 'How should backpressure be handled in asynchronous stream processing pipelines utilizing ' + skill + '?',
+      options: [
+        'The consumer signals the producer its buffer availability so the producer pauses emission when the consumer is overwhelmed.',
+        'The consumer immediately drops all incoming data packets silently without acknowledgment.',
+        'The producer increases emission speed to force the consumer to process faster.',
+        'All data is written to synchronous console.log statements.'
+      ],
+      correctAnswer: 'The consumer signals the producer its buffer availability so the producer pauses emission when the consumer is overwhelmed.',
+      explanation: 'Backpressure flow control prevents fast producers from overwhelming slow consumers, avoiding out-of-memory crashes.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'code_reading',
+      question: 'In web architectures using ' + skill + ', why does a browser dispatch a preflight CORS OPTIONS request prior to a non-simple HTTP request?',
+      options: [
+        'To verify with the cross-origin server whether the specific HTTP method and custom headers are permitted before sending the actual payload.',
+        'To compress the request payload using gzip compression.',
+        'To negotiate TLS 1.3 cryptographic cipher suites.',
+        'To download server favicon icons.'
+      ],
+      correctAnswer: 'To verify with the cross-origin server whether the specific HTTP method and custom headers are permitted before sending the actual payload.',
+      explanation: 'Browsers safeguard servers from unexpected cross-origin side effects by checking Access-Control-Allow-* headers via an OPTIONS preflight.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'debugging',
+      question: 'What is the distinction between a connection timeout and a socket read timeout when configuring HTTP clients in ' + skill + '?',
+      options: [
+        'Connection timeout limits initial TCP/TLS handshake duration, while read timeout limits the time waiting for bytes after the connection is established.',
+        'Connection timeout applies to UDP only, while read timeout applies to TCP only.',
+        'Read timeout measures the client computer booting time.',
+        'Both timeouts are identical and share the same single socket timer.'
+      ],
+      correctAnswer: 'Connection timeout limits initial TCP/TLS handshake duration, while read timeout limits the time waiting for bytes after the connection is established.',
+      explanation: 'Differentiating handshake timeout from response read timeout ensures fast failure during network outages while accommodating long-running queries.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'scenario',
+      question: 'During production deployments of an application built with ' + skill + ', what is the key advantage of Blue-Green deployment over in-place updates?',
+      options: [
+        'It allows instant zero-downtime traffic switching via load balancer and immediate rollback if health checks fail on the new environment.',
+        'It halves total server infrastructure costs permanently.',
+        'It eliminates the need for unit and integration testing.',
+        'It runs the new release directly in developer laptops.'
+      ],
+      correctAnswer: 'It allows instant zero-downtime traffic switching via load balancer and immediate rollback if health checks fail on the new environment.',
+      explanation: 'Blue-Green keeps two identical production environments, switching router/balancer traffic instantly once the idle environment is verified.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'mcq',
+      question: 'Which defense provides comprehensive protection against Stored Cross-Site Scripting (XSS) when rendering user-submitted text in ' + skill + ' interfaces?',
+      options: [
+        'Context-aware output encoding (HTML, attribute, JS escaping) combined with a strict Content Security Policy (CSP).',
+        'Filtering the word "script" with a single case-sensitive string replace.',
+        'Storing user inputs in Base64 encoding in the database.',
+        'Checking if the user is logged in as an administrator.'
+      ],
+      correctAnswer: 'Context-aware output encoding (HTML, attribute, JS escaping) combined with a strict Content Security Policy (CSP).',
+      explanation: 'Contextual encoding neutralizes executable HTML/JS characters into harmless character entities, while CSP restricts unauthorized script execution.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'mcq',
+      question: 'When is schema denormalization appropriate in high-throughput data architectures built with ' + skill + '?',
+      options: [
+        'In read-heavy workloads where avoiding expensive multi-table joins significantly reduces read latency and database query CPU time.',
+        'When disk storage space is completely full.',
+        'To eliminate the need for primary keys.',
+        'When write transactions outnumber read queries by 100 to 1.'
+      ],
+      correctAnswer: 'In read-heavy workloads where avoiding expensive multi-table joins significantly reduces read latency and database query CPU time.',
+      explanation: 'Denormalization duplicates data intentionally to optimize high-volume read access, trading write overhead for fast O(1) query performance.',
+      difficulty: 'medium',
+      expectedTimeSeconds: 45
+    },
+    {
+      type: 'scenario',
+      question: 'In Kubernetes horizontal pod autoscaling (HPA) for services implemented in ' + skill + ', why is queue depth or latency often a superior scaling metric compared to raw CPU usage?',
+      options: [
+        'Asynchronous I/O workers may saturate worker queues and degrade SLAs while CPU utilization remains low due to asynchronous I/O wait.',
+        'Kubernetes cannot monitor container CPU metrics.',
+        'CPU percentage is only updated once every 24 hours.',
+        'Queue depth metrics prevent memory allocation.'
+      ],
+      correctAnswer: 'Asynchronous I/O workers may saturate worker queues and degrade SLAs while CPU utilization remains low due to asynchronous I/O wait.',
+      explanation: 'I/O-bound services bottleneck on thread queues or network latency long before exhausting CPU cores, making queue depth the true leading indicator.',
       difficulty: 'hard',
       expectedTimeSeconds: 50
     }
   ];
-
-  return variations;
 }
 
-/**
- * AI Question Generator using Gemini API with structured schema validation.
- * Rejects any generated question that duplicates or near-duplicates existing questions.
- */
-export async function generateAiPracticeQuestions({
+ export async function generateAiPracticeQuestions({
   applicationId,
   firebaseUid,
   skills = [],
@@ -679,8 +726,7 @@ Requirements:
 }
 
 /**
- * Curated question generator that guarantees diverse, non-duplicate questions
- * across practice sessions and respects existing/served questions.
+ * Curated question generator for requirements
  */
 export function generateCuratedQuestions({
   applicationId,
@@ -692,13 +738,12 @@ export function generateCuratedQuestions({
   existingQuestions = []
 }) {
   const activeSkills = requirements.slice(0, 6).map(r => r.normalizedName || r.name);
-  const pool = activeSkills.length > 0 ? activeSkills : ['JavaScript', 'Algorithms', 'Web Development'];
+  const pool = activeSkills.length > 0 ? activeSkills : ['JavaScript', 'React', 'Node.js', 'Python', 'SQL'];
 
   const candidatePool = [];
 
-  // 1. Gather candidates from canonical repository
   for (const skill of pool) {
-    const bankItems = CANONICAL_QUESTION_BANK[skill] || [];
+    const bankItems = CURATED_MCQ_BANK[skill] || [];
     for (const item of bankItems) {
       const candidate = {
         firebaseUid,
@@ -719,7 +764,6 @@ export function generateCuratedQuestions({
       }
     }
 
-    // 2. Add procedural variations for this skill to ensure depth
     const variations = createProceduralVariations(skill, targetDifficulty);
     for (const v of variations) {
       const candidate = {
@@ -742,17 +786,14 @@ export function generateCuratedQuestions({
     }
   }
 
-  // 3. Filter candidates by preferredTypes if specified (e.g. coding-specific stages)
   let eligibleCandidates = candidatePool;
   if (Array.isArray(preferredTypes) && preferredTypes.length > 0) {
     eligibleCandidates = candidatePool.filter(c => preferredTypes.includes(c.type));
-    // If not enough match preferredTypes, include remaining to ensure count
     if (eligibleCandidates.length < count) {
       eligibleCandidates = candidatePool;
     }
   }
 
-  // 4. Select distinct questions that DO NOT duplicate existing questions or each other
   const selected = selectDistinctQuestions({
     pool: eligibleCandidates,
     count,
@@ -760,40 +801,162 @@ export function generateCuratedQuestions({
     targetDifficulty
   });
 
-  // 5. Fallback padding if pool was small, ensuring 100% unique items
-  let fallbackIndex = 1;
-  while (selected.length < count && fallbackIndex <= 15) {
-    const skill = pool[fallbackIndex % pool.length];
-    const genericCandidate = {
-      firebaseUid,
-      applicationId,
-      type: fallbackIndex % 2 === 0 ? 'debugging' : 'scenario',
-      question: `Engineering Reliability Scenario #${fallbackIndex}: How should an engineering team handle memory pressure during peak concurrency in ${skill}?`,
-      codeSnippet: `// Diagnostic checkpoint for ${skill}\nif (process.memoryUsage().heapUsed > THRESHOLD) {\n  triggerGracefulShedding();\n}`,
-      options: [
-        `Implement graceful load shedding and optimize resource recycling in ${skill}.`,
-        `Ignore memory metrics until the host machine enters kernel panic.`,
-        `Force all network callers into an infinite blocking queue.`,
-        `Write all in-flight heap objects directly to unbuffered raw disk logs.`
-      ],
-      correctAnswer: `Implement graceful load shedding and optimize resource recycling in ${skill}.`,
-      explanation: `Graceful load shedding relieves memory pressure while preserving service health for existing operations in ${skill}.`,
-      difficulty: targetDifficulty,
-      skill,
-      requirementRef: skill,
-      expectedTimeSeconds: 50
-    };
-    genericCandidate.options = shuffleArray(genericCandidate.options);
+  return selected.slice(0, count);
+}
 
-    if (
-      validateQuestionFormat(genericCandidate) &&
-      !isDuplicateOrNearDuplicate(genericCandidate, existingQuestions) &&
-      !isDuplicateOrNearDuplicate(genericCandidate, selected)
-    ) {
-      selected.push(genericCandidate);
+/**
+ * Generates targeted practice questions matching user-selected category, skill, difficulty, count, and mode.
+ */
+export async function generateTargetedPracticeQuestions({
+  applicationId,
+  firebaseUid,
+  category = 'Programming Languages',
+  skill = 'JavaScript',
+  difficulty = 'medium',
+  count = 10,
+  mode = 'mcq',
+  existingQuestions = [],
+  excludeIds = []
+}) {
+  const normSkill = skill || 'JavaScript';
+  const targetDiff = difficulty || 'medium';
+  const requestedCount = Math.max(1, Math.min(20, count));
+
+  if (mode === 'coding_challenges') {
+    const candidates = [];
+    const curated = CURATED_CODING_CHALLENGES[normSkill] || [];
+    for (const c of curated) {
+      candidates.push({
+        firebaseUid,
+        applicationId,
+        category,
+        mode: 'coding_challenges',
+        type: 'code_writing',
+        question: c.problemStatement.slice(0, 80) + '...',
+        problemStatement: c.problemStatement,
+        inputDescription: c.inputDescription,
+        outputDescription: c.outputDescription,
+        examples: c.examples || [],
+        constraints: c.constraints || [],
+        starterCode: c.starterCode || '',
+        testCases: c.testCases || [],
+        options: [],
+        correctAnswer: c.starterCode || '',
+        explanation: `Coding challenge covering ${normSkill}.`,
+        difficulty: c.difficulty || targetDiff,
+        skill: normSkill,
+        requirementRef: normSkill,
+        expectedTimeSeconds: 120
+      });
     }
-    fallbackIndex++;
+
+    for (let procIndex = 1; procIndex <= 25; procIndex++) {
+      const generated = generateProceduralCodingChallenge(normSkill, targetDiff, procIndex);
+      candidates.push({
+        ...generated,
+        firebaseUid,
+        applicationId,
+        category,
+        requirementRef: normSkill,
+        options: [],
+        correctAnswer: generated.starterCode || '',
+        expectedTimeSeconds: 120
+      });
+    }
+
+    const selected = selectDistinctQuestions({
+      pool: candidates,
+      count: requestedCount,
+      excludeIds,
+      excludeQuestions: existingQuestions,
+      targetDifficulty: targetDiff
+    });
+
+    return selected.slice(0, requestedCount);
   }
 
-  return selected.slice(0, count);
+  // MCQ Mode
+  const candidatePool = [];
+
+  const bankItems = CURATED_MCQ_BANK[normSkill] || [];
+  for (const item of bankItems) {
+    candidatePool.push({
+      firebaseUid,
+      applicationId,
+      category,
+      mode: 'mcq',
+      type: item.type || 'mcq',
+      question: item.question,
+      codeSnippet: item.codeSnippet || '',
+      options: shuffleArray(item.options),
+      correctAnswer: item.correctAnswer,
+      explanation: item.explanation,
+      difficulty: item.difficulty || targetDiff,
+      skill: normSkill,
+      requirementRef: normSkill,
+      expectedTimeSeconds: item.expectedTimeSeconds || 45
+    });
+  }
+
+  // Also procedural variations for this skill to ensure deep pool
+  const variations = createProceduralVariations(normSkill, targetDiff);
+  for (const v of variations) {
+    candidatePool.push({
+      firebaseUid,
+      applicationId,
+      category,
+      mode: 'mcq',
+      type: v.type,
+      question: v.question,
+      codeSnippet: v.codeSnippet || '',
+      options: shuffleArray(v.options),
+      correctAnswer: v.correctAnswer,
+      explanation: v.explanation,
+      difficulty: v.difficulty || targetDiff,
+      skill: normSkill,
+      requirementRef: normSkill,
+      expectedTimeSeconds: v.expectedTimeSeconds || 45
+    });
+  }
+
+  const excludeIdSet = new Set(excludeIds.map(id => String(id)));
+  const unexcludedCandidates = candidatePool.filter(q => {
+    const qId = q._id ? String(q._id) : null;
+    if (qId && excludeIdSet.has(qId)) return false;
+    if (isDuplicateOrNearDuplicate(q, existingQuestions)) return false;
+    return true;
+  });
+
+  if (unexcludedCandidates.length < requestedCount) {
+    try {
+      const needed = requestedCount - unexcludedCandidates.length;
+      const aiItems = await generateAiPracticeQuestions({
+        applicationId,
+        firebaseUid,
+        skills: [normSkill],
+        difficulty: targetDiff,
+        count: needed,
+        existingQuestions
+      });
+      for (const item of aiItems) {
+        candidatePool.push({
+          ...item,
+          category,
+          mode: 'mcq'
+        });
+      }
+    } catch (e) {
+      // AI fallback
+    }
+  }
+
+  const selected = selectDistinctQuestions({
+    pool: candidatePool,
+    count: requestedCount,
+    excludeIds,
+    excludeQuestions: existingQuestions,
+    targetDifficulty: targetDiff
+  });
+
+  return selected.slice(0, requestedCount);
 }

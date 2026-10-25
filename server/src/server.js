@@ -8,7 +8,7 @@ async function startServer() {
   await connectDB();
 
   app.listen(PORT, () => {
-    console.log(`HireMate AI API server running on port ${PORT} [${env.NODE_ENV}]`);
+    console.log(`HireMate Nexus API server running on port ${PORT} [${env.NODE_ENV}]`);
   });
 }
 

@@ -200,14 +200,6 @@ export default function ApplicationDashboardPage() {
           </div>
         )}
 
-        {/* Disclaimer */}
-        <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-center gap-2.5">
-          <AlertCircle size={15} className="text-amber-500 shrink-0" />
-          <span>
-            HireMate AI calculates transparent target job alignment. Scores are indicators of requirement match and preparation effort—never hiring probabilities.
-          </span>
-        </div>
-
         {/* KPI Dual Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Job Match Score Card */}
@@ -277,7 +269,7 @@ export default function ApplicationDashboardPage() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <h3 className="font-extrabold text-base sm:text-lg">Structured Preparation Flow</h3>
-            <span className="text-xs text-[var(--text-muted)] font-medium">Follow in sequential steps</span>
+            
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -287,7 +279,7 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 1</span>
+                  
                   <Briefcase size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Target Job & Alignment</div>
@@ -305,7 +297,7 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 2</span>
+                  
                   <FileText size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Resume & Quality Check</div>
@@ -323,7 +315,7 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 3</span>
+                  
                   <Clock size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Preparation Roadmap</div>
@@ -341,7 +333,7 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 4</span>
+                  
                   <Cpu size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Practice & Auto-Graded Coding</div>
@@ -359,14 +351,14 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 5</span>
+                  
                   <BookOpen size={15} className="text-indigo-500" />
                 </div>
-                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Company Research & Quiz</div>
-                <p className="text-xs text-[var(--text-muted)] mt-1">Verified company culture facts and quiz questions built only from verified facts.</p>
+                <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Company Research Hub</div>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Verified company culture facts, tech stack, leadership, and recruitment insights.</p>
               </div>
               <div className="mt-3 pt-2 text-[11px] text-indigo-600 font-semibold flex items-center gap-1">
-                <span>Research & Quiz</span>
+                <span>Explore Company Hub</span>
                 <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
@@ -377,7 +369,7 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Step 6 & 7</span>
+                  
                   <CheckCircle size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Readiness & Final Checklist</div>

@@ -1,7 +1,7 @@
-﻿import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, ArrowRight } from 'lucide-react';
+import { ArrowRight, Mail, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       await login(email, password);
       navigate('/dashboard');
@@ -29,10 +30,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--bg-primary)]">
       <div className="w-full max-w-md p-8 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-xl">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
-            H
+          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3 shadow-md">
+            N
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Welcome to HireMate AI</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Welcome to HireMate Nexus</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">Targeted, evidence-aware preparation for your target job application</p>
         </div>
 
@@ -70,17 +71,17 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition-colors disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
           >
             {loading ? 'Signing in...' : 'Sign In'}
             <ArrowRight size={16} />
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-[var(--text-muted)]">
+        <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
           Don't have an account?{' '}
-          <Link to="/register" className="text-indigo-600 hover:underline font-medium">
-            Register here
+          <Link to="/register" className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
+            Register now
           </Link>
         </div>
       </div>

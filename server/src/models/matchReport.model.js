@@ -59,7 +59,7 @@ const matchReportSchema = new mongoose.Schema({
   }],
   disclaimer: {
     type: String,
-    default: 'HireMate AI alignment score reflects target job alignment and preparation progress. It is never a hiring probability.'
+    default: ''
   },
   promptVersion: {
     type: String,

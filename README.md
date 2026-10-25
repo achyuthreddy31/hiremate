@@ -1,13 +1,13 @@
-﻿# HireMate AI
+﻿# HireMate Nexus
 
-**HireMate AI** is an AI-powered, personalized preparation assistant for **one specific job application**. It helps students and job seekers prepare with laser focus for their chosen company and role.
+**HireMate Nexus** is an AI-powered, personalized preparation assistant for **one specific job application**. It helps students and job seekers prepare with laser focus for their chosen company and role.
 
 It analyzes the user's profile, in-memory PDF resume, real job description, target interview date, daily preparation time, and practice performance. It calculates a transparent, explainable **Job Match Score**, allocates a dated preparation roadmap, provides auto-graded coding and test practice with adaptive difficulty, and tracks an effort-based **Interview Readiness Score**.
 
 ---
 
 ## 1. Transparent Product Positioning
-Resume parsing, skill-gap analysis, learning paths, and AI coaching exist across published literature. What HireMate AI uniquely contributes is **the integration**: an evidence-aware, adaptive, target-application-focused preparation workflow with **deterministic, explainable scoring** computed strictly in Node.js backend code.
+Resume parsing, skill-gap analysis, learning paths, and AI coaching exist across published literature. What HireMate Nexus uniquely contributes is **the integration**: an evidence-aware, adaptive, target-application-focused preparation workflow with **deterministic, explainable scoring** computed strictly in Node.js backend code.
 
 - **No mock-interview features of any kind**: No simulated interviewer conversations, no chat or voice interviews, no AI grading of interview answers. Preparation focuses on prepared technical/behavioral questions, STAR guidance, and private self-tracking notes.
 - **Explainable Scores**: Scores are calculated using transparent formulas in pure backend services. The score is an alignment and preparation indicator—it is **never a hiring probability**.

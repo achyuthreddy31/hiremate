@@ -336,6 +336,6 @@ export function calculateJobMatchScore({
     categoryScores,
     excludedCategories,
     insufficientRequirements: insufficientTech,
-    disclaimer: 'HireMate AI alignment score reflects target job alignment and preparation progress. It is never a hiring probability.'
+    disclaimer: ''
   };
 }

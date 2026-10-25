@@ -1,8 +1,9 @@
-﻿import { allocateRoadmapSlots } from './scoring/roadmapAllocation.js';
+import { allocateRoadmapSlots } from './scoring/roadmapAllocation.js';
 
 /**
  * Builds complete preparation roadmap with deterministic time allocation.
  * Enforces rule: Every task MUST reference a requirementRef and a gapRef.
+ * Strictly guarantees chronological order starting from Day 1 to final day.
  */
 export function generateRoadmapPlan({
   userAvailableDays = 14,
@@ -14,10 +15,10 @@ export function generateRoadmapPlan({
   const gaps = requirementsResults
     .filter(r => r.status !== 'strong')
     .map(r => ({
-      id: r.requirementRef || r.normalizedName,
-      requirementRef: r.requirementRef || r.normalizedName,
+      id: r.requirementRef || r.normalizedName || r.name,
+      requirementRef: r.requirementRef || r.normalizedName || r.name,
       name: r.name,
-      normalizedName: r.normalizedName,
+      normalizedName: r.normalizedName || r.name,
       importance: r.importance || 'important',
       score: r.score || 0,
       difficulty: r.score < 30 ? 'easy' : (r.score < 60 ? 'medium' : 'hard')
@@ -30,11 +31,19 @@ export function generateRoadmapPlan({
     gaps
   });
 
-  // Enhance scheduled tasks with learning activities & practice descriptions
+  // Enhance scheduled tasks with progressive learning activities & practice descriptions
   const tasksWithWording = allocation.scheduledTasks.map(task => {
-    let title = `Master ${task.topic}`;
+    let title = task.title || `Master ${task.topic}`;
     let learningActivity = `Read official documentation and architectural patterns for ${task.topic}.`;
-    let practiceActivity = `Build a hands-on proof-of-concept module and solve 5 practice questions for ${task.topic}.`;
+    let practiceActivity = `Build a hands-on proof-of-concept module and solve practice questions for ${task.topic}.`;
+
+    if (task.difficulty === 'easy') {
+      learningActivity = `Review foundational mechanics, key terminology, and syntax essentials for ${task.topic}.`;
+      practiceActivity = `Implement core code examples and complete introductory practice questions for ${task.topic}.`;
+    } else if (task.difficulty === 'hard') {
+      learningActivity = `Deep-dive into concurrency trade-offs, system optimization, and edge cases in ${task.topic}.`;
+      practiceActivity = `Debug complex scenario items and execute performance optimization drills for ${task.topic}.`;
+    }
 
     if (task.requirementRef === 'revision_comprehensive') {
       title = 'Comprehensive Revision & Note Review';
@@ -43,7 +52,7 @@ export function generateRoadmapPlan({
     } else if (task.requirementRef === 'final_checklist_audit') {
       title = 'Final Target Job Readiness Audit';
       learningActivity = 'Verify all checklist items, role details, and company research facts.';
-      practiceActivity = 'Complete final self-audit and logistics check.';
+      practiceActivity = 'Complete final self-audit and interview logistics check.';
     }
 
     return {
@@ -53,6 +62,9 @@ export function generateRoadmapPlan({
       practiceActivity
     };
   });
+
+  // Ensure strict chronological sort
+  tasksWithWording.sort((a, b) => a.day - b.day);
 
   return {
     totalDays: allocation.totalDays,
@@ -99,9 +111,9 @@ export function generateRecommendationsForGaps({ applicationId, firebaseUid, gap
       searchQuery: `${topic} hands on practical project github`,
       skill: topic,
       requirementRef: gap.requirementRef || topic,
-      reason: `Hands-on proof of skill to upgrade from single mention to verified personal project evidence.`,
+      reason: `Practical implementation evidence for ${topic}.`,
       difficulty: 'hard',
-      estimatedMinutes: 90,
+      estimatedMinutes: 60,
       confidence: 0.90
     });
   }

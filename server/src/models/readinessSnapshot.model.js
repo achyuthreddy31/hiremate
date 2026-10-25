@@ -34,7 +34,7 @@ const readinessSnapshotSchema = new mongoose.Schema({
   },
   disclaimer: {
     type: String,
-    default: 'HireMate AI Interview Readiness Score measures candidate preparation effort and completeness. It is never a chance of being selected.'
+    default: ''
   }
 }, {
   timestamps: true

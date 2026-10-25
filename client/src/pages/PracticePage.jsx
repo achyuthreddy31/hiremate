@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
 import {
@@ -8,19 +8,74 @@ import {
   XCircle,
   RefreshCw,
   AlertCircle,
-  Timer,
   ChevronRight,
   TrendingUp,
   Award,
-  RotateCcw
+  RotateCcw,
+  Code,
+  BookOpen,
+  Search,
+  Check,
+  Play,
+  ArrowRight
 } from 'lucide-react';
+
+const CATEGORIES_DATA = {
+  'Programming Languages': [
+    'Python',
+    'Java',
+    'C',
+    'C++',
+    'JavaScript',
+    'TypeScript'
+  ],
+  'Web Development': [
+    'HTML',
+    'CSS',
+    'JavaScript',
+    'React',
+    'Node.js',
+    'Express.js',
+    'FastAPI'
+  ],
+  'Databases': [
+    'SQL',
+    'MongoDB',
+    'PostgreSQL',
+    'MySQL'
+  ],
+  'Core CS & DSA': [
+    'Data Structures & Algorithms',
+    'Object-Oriented Programming',
+    'DBMS',
+    'Operating Systems',
+    'Computer Networks'
+  ],
+  'AI & Data Science': [
+    'Artificial Intelligence',
+    'Machine Learning',
+    'Data Science',
+    'Pandas',
+    'NumPy'
+  ]
+};
+
+const DIFFICULTY_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
+const COUNT_OPTIONS = [5, 10, 15, 20];
+const MODE_OPTIONS = [
+  { label: 'MCQs', value: 'mcq' },
+  { label: 'Coding challenges', value: 'coding_challenges' }
+];
 
 export default function PracticePage() {
   const { applicationId } = useParams();
+  const navigate = useNavigate();
+
   const [app, setApp] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [codeAnswer, setCodeAnswer] = useState('');
   const [submissionResult, setSubmissionResult] = useState(null);
   const [performance, setPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,11 +83,31 @@ export default function PracticePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isExhausted, setIsExhausted] = useState(false);
-  const [activeTab, setActiveTab] = useState('quiz'); // 'quiz' | 'performance'
+  const [activeTab, setActiveTab] = useState('practice'); // 'practice' | 'performance'
+
+  // Dynamic Selection State
+  const [selectedCategory, setSelectedCategory] = useState('Programming Languages');
+  const [selectedSkill, setSelectedSkill] = useState('Python');
+  const [skillSearch, setSkillSearch] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('Intermediate');
+  const [selectedCount, setSelectedCount] = useState(10);
+  const [selectedMode, setSelectedMode] = useState('mcq');
+
+  // Session Results Tracking
+  const [sessionHistory, setSessionHistory] = useState([]);
+  const [isSessionComplete, setIsSessionComplete] = useState(false);
 
   useEffect(() => {
     fetchPracticeData();
   }, [applicationId]);
+
+  // Synchronize available skills when category changes
+  const handleCategoryChange = (newCat) => {
+    setSelectedCategory(newCat);
+    const available = CATEGORIES_DATA[newCat] || [];
+    setSelectedSkill(available[0] || '');
+    setSkillSearch('');
+  };
 
   const fetchPracticeData = async () => {
     try {
@@ -46,6 +121,10 @@ export default function PracticePage() {
       setQuestions(fetchedQuestions);
       setIsExhausted(!!qRes.exhausted && fetchedQuestions.length === 0);
       setPerformance(perfRes.data || []);
+
+      if (fetchedQuestions.length > 0) {
+        setCodeAnswer(fetchedQuestions[0].starterCode || '');
+      }
     } catch (err) {
       setError(err.message || 'Failed to load practice questions');
     } finally {
@@ -53,41 +132,83 @@ export default function PracticePage() {
     }
   };
 
-  const handleGenerate = async (reset = false) => {
+  const handleStartSession = async (reset = false) => {
     setGenerating(true);
     setError('');
+    setIsSessionComplete(false);
+    setSessionHistory([]);
     try {
+      const payload = {
+        category: selectedCategory,
+        skill: selectedSkill,
+        difficulty: selectedDifficulty,
+        count: selectedCount,
+        mode: selectedMode,
+        reset
+      };
+
       const endpoint = reset
         ? `/practice/generate/${applicationId}?reset=true`
         : `/practice/generate/${applicationId}`;
-      const res = await apiClient.post(endpoint);
+
+      const res = await apiClient.post(endpoint, payload);
       const generated = res.data || [];
       setQuestions(generated);
       setCurrentIndex(0);
       setSubmissionResult(null);
       setSelectedAnswer('');
       setIsExhausted(!!res.exhausted && generated.length === 0);
+
+      if (generated.length > 0) {
+        setCodeAnswer(generated[0].starterCode || '');
+      }
     } catch (err) {
-      setError(err.message || 'Failed to generate questions');
+      setError(err.message || 'Failed to generate practice session');
     } finally {
       setGenerating(false);
     }
   };
 
+  const currentQ = questions[currentIndex];
+
   const handleSubmitAnswer = async () => {
-    if (!selectedAnswer) return;
+    const answerToSubmit = currentQ?.mode === 'coding_challenges' || currentQ?.type === 'code_writing'
+      ? codeAnswer
+      : selectedAnswer;
+
+    if (!answerToSubmit || String(answerToSubmit).trim() === '') return;
+
     setSubmitting(true);
     setError('');
 
-    const currentQ = questions[currentIndex];
     try {
       const res = await apiClient.post(`/practice/submit/${applicationId}/${currentQ._id}`, {
-        answer: selectedAnswer,
+        answer: answerToSubmit,
         timeTakenSeconds: 30
       });
-      setSubmissionResult(res.data);
-      // Refresh performance stats in background
+
+      const resultData = res.data;
+      setSubmissionResult(resultData);
+
+      // Record in session history
+      const newHistory = [
+        ...sessionHistory,
+        {
+          questionId: currentQ._id,
+          isCorrect: resultData.isCorrect,
+          userAnswer: answerToSubmit,
+          correctAnswer: resultData.correctAnswer
+        }
+      ];
+      setSessionHistory(newHistory);
+
+      // Refresh adaptive performance stats in background
       apiClient.get(`/practice/performance/${applicationId}`).then(p => setPerformance(p.data || []));
+
+      // If this was the last question in the session, mark session complete
+      if (currentIndex === questions.length - 1) {
+        // Session complete state will trigger when the user clicks "View Session Summary" or we can show completion
+      }
     } catch (err) {
       setError(err.message || 'Submission failed');
     } finally {
@@ -95,34 +216,53 @@ export default function PracticePage() {
     }
   };
 
-  const handleNext = () => {
+  const handleNextQuestion = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
       setSelectedAnswer('');
       setSubmissionResult(null);
+      setCodeAnswer(questions[nextIdx]?.starterCode || '');
+    } else {
+      // Completed all questions in the session
+      setIsSessionComplete(true);
     }
   };
 
-  const currentQ = questions[currentIndex];
+  const availableSkills = CATEGORIES_DATA[selectedCategory] || [];
+  const filteredSkills = availableSkills.filter(s =>
+    s.toLowerCase().includes(skillSearch.toLowerCase())
+  );
+
+  // Accurate session statistics calculation
+  const totalSessionAnswered = sessionHistory.length;
+  const correctCount = sessionHistory.filter(h => h.isCorrect).length;
+  const incorrectCount = totalSessionAnswered - correctCount;
+  const accuracyPercentage = totalSessionAnswered > 0
+    ? Math.round((correctCount / totalSessionAnswered) * 100)
+    : 0;
+  const finalScore = questions.length > 0
+    ? Math.round((correctCount / questions.length) * 100)
+    : 0;
 
   return (
     <AppLayout currentApplication={app}>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6 max-w-5xl mx-auto">
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Practice & Auto-Graded Coding</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Practice & Coding</h1>
             <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Auto-graded debugging, output prediction, and code reading. Evaluates adaptive difficulty across 5-attempt windows.
+              Dynamic technical quizzes and auto-graded coding challenges across core software engineering domains.
             </p>
           </div>
           <button
-            onClick={() => handleGenerate(false)}
+            onClick={() => handleStartSession(false)}
             disabled={generating}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-            <span>{generating ? 'Selecting Questions...' : 'Generate 10-Question Test'}</span>
+            <span>{generating ? 'Configuring Session...' : 'Start Practice Session'}</span>
           </button>
         </div>
 
@@ -132,29 +272,115 @@ export default function PracticePage() {
           </div>
         )}
 
+        {/* Dynamic Selection Controls Panel */}
+        <div className="p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm space-y-4">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            Session Configuration & Parameters
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* 1. Category Dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+              >
+                {Object.keys(CATEGORIES_DATA).map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Skill Dropdown (Synchronized with Category) */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">
+                Skill ({filteredSkills.length})
+              </label>
+              <select
+                value={selectedSkill}
+                onChange={(e) => setSelectedSkill(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+              >
+                {filteredSkills.map(sk => (
+                  <option key={sk} value={sk}>{sk}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 3. Difficulty */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Difficulty</label>
+              <select
+                value={selectedDifficulty}
+                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+              >
+                {DIFFICULTY_OPTIONS.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 4. Number of Questions */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Questions</label>
+              <select
+                value={selectedCount}
+                onChange={(e) => setSelectedCount(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+              >
+                {COUNT_OPTIONS.map(cnt => (
+                  <option key={cnt} value={cnt}>{cnt} Questions</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 5. Practice Mode */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Practice Mode</label>
+              <select
+                value={selectedMode}
+                onChange={(e) => setSelectedMode(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+              >
+                {MODE_OPTIONS.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
           <button
-            onClick={() => setActiveTab('quiz')}
+            onClick={() => setActiveTab('practice')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              activeTab === 'quiz' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+              activeTab === 'practice'
+                ? 'bg-indigo-600 text-white'
+                : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            Active Test Session ({questions.length})
+            Active Session ({questions.length})
           </button>
           <button
             onClick={() => setActiveTab('performance')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              activeTab === 'performance' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+              activeTab === 'performance'
+                ? 'bg-indigo-600 text-white'
+                : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            Adaptive Topic Performance ({performance.length})
+            Topic Performance Stats ({performance.length})
           </button>
         </div>
 
-        {/* Tab 1: Active Test Session */}
-        {activeTab === 'quiz' && (
+        {/* Tab 1: Practice Session */}
+        {activeTab === 'practice' && (
           <div>
+            {/* Empty State */}
             {questions.length === 0 && !loading && (
               <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm space-y-4">
                 {isExhausted ? (
@@ -162,10 +388,10 @@ export default function PracticePage() {
                     <Award size={40} className="text-amber-500 mx-auto" />
                     <h3 className="font-extrabold text-lg">Question Bank Completed!</h3>
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                      You have completed all available practice and coding questions for this application. To practice again from the beginning, you can reset your attempt history.
+                      You have completed all available practice questions for {selectedSkill}. Switch to another skill or reset attempt history to practice again.
                     </p>
                     <button
-                      onClick={() => handleGenerate(true)}
+                      onClick={() => handleStartSession(true)}
                       disabled={generating}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                     >
@@ -176,27 +402,85 @@ export default function PracticePage() {
                 ) : (
                   <>
                     <Cpu size={36} className="text-indigo-600 mx-auto" />
-                    <h3 className="font-bold text-base">No Active Practice Questions</h3>
+                    <h3 className="font-bold text-base">Ready for Targeted Practice?</h3>
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                      Generate a targeted 10-question practice test matching the technical requirements of this job. Previously served questions will not be repeated.
+                      Select your desired category, skill, difficulty, and question count above, then launch your practice session.
                     </p>
                     <button
-                      onClick={() => handleGenerate(false)}
+                      onClick={() => handleStartSession(false)}
                       disabled={generating}
                       className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                     >
-                      Generate 10-Question Test
+                      Start {selectedSkill} Session
                     </button>
                   </>
                 )}
               </div>
             )}
 
-            {currentQ && (
+            {/* Session Complete Card (Shown ONLY when all questions are completed) */}
+            {isSessionComplete && (
+              <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm space-y-6 text-center max-w-xl mx-auto">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle size={36} />
+                </div>
+
+                <div>
+                  <h2 className="text-2xl font-extrabold tracking-tight">Session Completed!</h2>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    You have finished all questions in this {selectedSkill} practice session.
+                  </p>
+                </div>
+
+                {/* Final Statistics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                  <div className="p-3.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)]">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Total</span>
+                    <div className="text-xl font-extrabold text-[var(--text-primary)] mt-0.5">{questions.length}</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">Correct</span>
+                    <div className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 mt-0.5">{correctCount}</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-500/30">
+                    <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">Incorrect</span>
+                    <div className="text-xl font-extrabold text-rose-700 dark:text-rose-300 mt-0.5">{incorrectCount}</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-500/30">
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase">Accuracy</span>
+                    <div className="text-xl font-extrabold text-indigo-700 dark:text-indigo-300 mt-0.5">{accuracyPercentage}%</div>
+                  </div>
+                </div>
+
+                {/* Navigation and Call to Action */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => handleStartSession(false)}
+                    disabled={generating}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
+                    <span>Practice Again</span>
+                  </button>
+
+                  <Link
+                    to={`/app/${applicationId}/checklist`}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[var(--text-primary)] font-bold text-xs sm:text-sm transition-all"
+                  >
+                    <span>View Updated Readiness Score</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Active Question View */}
+            {!isSessionComplete && currentQ && (
               <div className="p-6 sm:p-7 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-5 shadow-sm">
+                {/* Question Header & Breadcrumbs */}
                 <div className="flex justify-between items-center pb-3.5 border-b border-[var(--border-subtle)]">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    Question {currentIndex + 1} of {questions.length} • {currentQ.type.replace(/_/g, ' ')}
+                    Question {currentIndex + 1} of {questions.length} • {currentQ.mode === 'coding_challenges' ? 'Coding Challenge' : (currentQ.type || 'MCQ').replace(/_/g, ' ')}
                   </span>
                   <div className="flex items-center gap-2 text-xs font-semibold">
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 capitalize">
@@ -206,53 +490,133 @@ export default function PracticePage() {
                   </div>
                 </div>
 
-                <div className="text-sm sm:text-base font-semibold leading-relaxed">
-                  {currentQ.question}
-                </div>
+                {/* MODE: CODING CHALLENGE */}
+                {currentQ.mode === 'coding_challenges' || currentQ.type === 'code_writing' ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-extrabold leading-relaxed text-[var(--text-primary)]">
+                        {currentQ.problemStatement || currentQ.question}
+                      </h3>
+                    </div>
 
-                {currentQ.codeSnippet && (
-                  <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">
-                    {currentQ.codeSnippet}
-                  </pre>
+                    {currentQ.inputDescription && (
+                      <div className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1">
+                        <span className="font-bold text-[var(--text-muted)]">Input: </span>
+                        <span>{currentQ.inputDescription}</span>
+                      </div>
+                    )}
+
+                    {currentQ.outputDescription && (
+                      <div className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1">
+                        <span className="font-bold text-[var(--text-muted)]">Output: </span>
+                        <span>{currentQ.outputDescription}</span>
+                      </div>
+                    )}
+
+                    {/* Examples */}
+                    {currentQ.examples && currentQ.examples.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Examples:</span>
+                        {currentQ.examples.map((ex, idx) => (
+                          <div key={idx} className="p-3 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs space-y-1 border border-slate-800">
+                            <div><span className="text-slate-400 font-sans">Input:</span> {ex.input}</div>
+                            <div><span className="text-slate-400 font-sans">Output:</span> {ex.output}</div>
+                            {ex.explanation && (
+                              <div className="text-slate-400 text-[11px] font-sans pt-1">
+                                <span className="font-semibold">Explanation:</span> {ex.explanation}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Constraints */}
+                    {currentQ.constraints && currentQ.constraints.length > 0 && (
+                      <div className="text-xs text-[var(--text-muted)] space-y-1">
+                        <span className="font-bold uppercase tracking-wider text-[10px]">Constraints:</span>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {currentQ.constraints.map((c, i) => (
+                            <li key={i}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Code Editor Area */}
+                    <div className="space-y-2 pt-2">
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <span className="text-[var(--text-muted)]">Your Code Solution:</span>
+                        <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">{currentQ.skill}</span>
+                      </div>
+                      <textarea
+                        rows={10}
+                        value={codeAnswer}
+                        disabled={!!submissionResult}
+                        onChange={(e) => setCodeAnswer(e.target.value)}
+                        placeholder="Write your code solution here..."
+                        className="w-full p-4 rounded-xl font-mono text-xs bg-slate-950 text-slate-100 border border-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed disabled:opacity-80"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* MODE: MCQ */
+                  <div className="space-y-4">
+                    <div className="text-sm sm:text-base font-semibold leading-relaxed">
+                      {currentQ.question}
+                    </div>
+
+                    {currentQ.codeSnippet && (
+                      <pre className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">
+                        {currentQ.codeSnippet}
+                      </pre>
+                    )}
+
+                    {/* Options */}
+                    <div className="space-y-2.5 pt-2">
+                      {currentQ.options?.map((opt, idx) => (
+                        <label
+                          key={idx}
+                          className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-all ${
+                            selectedAnswer === opt
+                              ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 font-medium'
+                              : 'border-[var(--border-subtle)] hover:border-slate-400 bg-[var(--bg-primary)]'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="practiceOption"
+                            value={opt}
+                            disabled={!!submissionResult}
+                            checked={selectedAnswer === opt}
+                            onChange={(e) => setSelectedAnswer(e.target.value)}
+                            className="mt-1"
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
-                {/* Options */}
-                <div className="space-y-2.5 pt-2">
-                  {currentQ.options?.map((opt, idx) => (
-                    <label
-                      key={idx}
-                      className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-all ${
-                        selectedAnswer === opt
-                          ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 font-medium'
-                          : 'border-[var(--border-subtle)] hover:border-slate-400 bg-[var(--bg-primary)]'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="practiceOption"
-                        value={opt}
-                        disabled={!!submissionResult}
-                        checked={selectedAnswer === opt}
-                        onChange={(e) => setSelectedAnswer(e.target.value)}
-                        className="mt-1"
-                      />
-                      <span>{opt}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {/* Submit / Next Button */}
+                {/* Submit / Action Button */}
                 {!submissionResult ? (
                   <div className="pt-3 flex justify-end">
                     <button
                       onClick={handleSubmitAnswer}
-                      disabled={!selectedAnswer || submitting}
+                      disabled={
+                        submitting ||
+                        (currentQ.mode === 'coding_challenges' || currentQ.type === 'code_writing'
+                          ? !codeAnswer.trim()
+                          : !selectedAnswer)
+                      }
                       className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
                     >
                       {submitting ? 'Auto-Grading On Server...' : 'Submit & Check Answer'}
                     </button>
                   </div>
                 ) : (
+                  /* Post-Submission Feedback */
                   <div className="pt-4 border-t border-[var(--border-subtle)] space-y-4">
                     <div
                       className={`p-4 rounded-xl border flex items-start gap-3 ${
@@ -266,18 +630,50 @@ export default function PracticePage() {
                       ) : (
                         <XCircle size={20} className="shrink-0 text-rose-600 mt-0.5" />
                       )}
-                      <div className="text-xs space-y-1">
-                        <div className="font-extrabold text-sm">
-                          {submissionResult.isCorrect ? 'Correct!' : 'Incorrect'}
+                      <div className="text-xs space-y-1.5 flex-1">
+                        {/* Requirement 2.3: Exact Feedback String for Correct Answers */}
+                        <div className="font-extrabold text-sm sm:text-base">
+                          {submissionResult.isCorrect ? 'Well done! Keep going.' : 'Incorrect'}
                         </div>
-                        <div>
-                          <span className="font-bold">Correct Option: </span>
-                          {submissionResult.correctAnswer}
-                        </div>
-                        <div className="mt-1">
-                          <span className="font-bold">Explanation: </span>
-                          {submissionResult.explanation}
-                        </div>
+
+                        {!submissionResult.isCorrect && submissionResult.correctAnswer && (
+                          <div className="pt-1">
+                            <span className="font-bold">Correct Solution / Answer: </span>
+                            <pre className="mt-1 p-2 rounded bg-slate-900 text-slate-100 font-mono text-[11px] overflow-x-auto">
+                              {submissionResult.correctAnswer}
+                            </pre>
+                          </div>
+                        )}
+
+                        {submissionResult.explanation && (
+                          <div className="mt-1">
+                            <span className="font-bold">Explanation: </span>
+                            {submissionResult.explanation}
+                          </div>
+                        )}
+
+                        {/* Test Cases Execution Table for Coding Challenges */}
+                        {submissionResult.testResults && (
+                          <div className="mt-2 space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                            <span className="font-bold text-[11px] uppercase tracking-wider">Test Cases Validation:</span>
+                            <div className="space-y-1">
+                              {submissionResult.testResults.map((tr, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`p-2 rounded-lg text-[11px] flex items-center justify-between font-mono ${
+                                    tr.passed
+                                      ? 'bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                                      : 'bg-rose-100/60 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300'
+                                  }`}
+                                >
+                                  <span>Test Case #{tr.testCaseIndex}</span>
+                                  <span>{tr.passed ? 'PASSED' : 'FAILED'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {submissionResult.adaptiveEvaluation && (
                           <div className="pt-1.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
                             Adaptive Engine: {submissionResult.adaptiveEvaluation.reason}
@@ -286,32 +682,20 @@ export default function PracticePage() {
                       </div>
                     </div>
 
+                    {/* Navigation between questions */}
                     <div className="flex items-center justify-between pt-2">
                       <div className="text-xs text-[var(--text-muted)] font-semibold">
-                        {currentIndex < questions.length - 1 ? (
-                          `Question ${currentIndex + 1} completed`
-                        ) : (
-                          'Practice session complete! Check your updated Interview Readiness score.'
-                        )}
+                        {currentIndex < questions.length - 1
+                          ? `Question ${currentIndex + 1} completed`
+                          : 'All questions in this session answered'}
                       </div>
                       <div className="flex items-center gap-3">
-                        {currentIndex < questions.length - 1 ? (
-                          <button
-                            onClick={handleNext}
-                            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"
-                          >
-                            Next Question →
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleGenerate(false)}
-                            disabled={generating}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all"
-                          >
-                            <RefreshCw size={14} className={generating ? "animate-spin" : ""} />
-                            <span>Start Next Practice Test</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={handleNextQuestion}
+                          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"
+                        >
+                          {currentIndex < questions.length - 1 ? 'Next Question →' : 'View Session Summary'}
+                        </button>
                       </div>
                     </div>
                   </div>

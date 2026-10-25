@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { extractJobRequirementsDeterministically } from '../server/src/services/jobAnalysis.service.js';
@@ -13,7 +13,7 @@ const rawData = fs.readFileSync(benchmarkPath, 'utf8');
 const testPairs = JSON.parse(rawData);
 
 console.log('====================================================');
-console.log('HireMate AI: Evaluation Benchmark Toolkit');
+console.log('HireMate Nexus: Evaluation Benchmark Toolkit');
 console.log(`Loaded ${testPairs.length} synthetic ground-truth resume & job pairs.`);
 console.log('====================================================\n');
 

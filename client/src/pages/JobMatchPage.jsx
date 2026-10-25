@@ -123,15 +123,6 @@ export default function JobMatchPage() {
           </button>
         </div>
 
-        {/* Disclaimer */}
-        <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-[var(--border-subtle)] text-xs text-[var(--text-muted)] flex items-start gap-3">
-          <AlertCircle size={17} className="text-amber-500 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <span className="font-semibold text-[var(--text-primary)]">Non-Negotiable Product Rule: </span>
-            The alignment score is an indicator of target job alignment and preparation completeness. It is never a hiring probability.
-          </div>
-        </div>
-
         {error && (
           <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
             {error}

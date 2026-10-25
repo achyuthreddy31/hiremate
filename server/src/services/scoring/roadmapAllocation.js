@@ -1,17 +1,64 @@
-﻿/**
+/**
  * Roadmap Time Allocation Engine
- * Pure functions strictly implementing Section 3.6.
+ * Pure functions implementing deterministic, progressive preparation schedules.
  *
- * 1. Days available = min(user.availableDays, daysUntilInterview). Default 14.
+ * 1. Days available = calculated from userAvailableDays and interviewDate (if valid future date).
  * 2. Total minutes = days * dailyPreparationMinutes. Reserve final day for revision and checklist.
  * 3. Rank gaps by importanceWeight * (100 - requirementScore).
- *    Allocate minutes proportionally across gaps using min slots of 20 mins.
- * 4. Prioritize critical gaps; flag uncovered ones.
- * 5. Deterministic day-by-day slot generation.
+ * 4. Progressive milestone distribution:
+ *    - Day 1+: Foundational concepts and architecture.
+ *    - Next: Intermediate applied patterns and drills.
+ *    - Next: Advanced optimization, edge cases and trade-offs.
+ * 5. Every day from Day 1 to final day is populated sequentially without skipping days.
+ * 6. Tasks are strictly sorted chronologically (Day 1 -> Day N).
  */
 import { getImportanceMultiplier } from './evidenceScoring.js';
 
 export const MIN_SLOT_MINUTES = 20;
+
+/**
+ * Builds progressive phase descriptions for a topic when spread across multiple days.
+ */
+function getProgressivePhase(topic, phaseIndex, totalPhases) {
+  if (totalPhases <= 1) {
+    return {
+      title: `Master ${topic}: Core Concepts & Practical Application`,
+      phase: 'Core Foundations & Practice',
+      difficulty: 'medium',
+      focus: 'Foundational principles and hands-on drills'
+    };
+  }
+
+  if (phaseIndex === 0) {
+    return {
+      title: `${topic}: Core Foundations & Architecture`,
+      phase: 'Foundations',
+      difficulty: 'easy',
+      focus: 'Underlying mechanics, terminology, and syntax essentials'
+    };
+  } else if (phaseIndex === 1) {
+    return {
+      title: `${topic}: Implementation Patterns & Problem Solving`,
+      phase: 'Applied Patterns',
+      difficulty: 'medium',
+      focus: 'Common architectural patterns, component state, and real-world implementations'
+    };
+  } else if (phaseIndex === 2) {
+    return {
+      title: `${topic}: Advanced Optimization, Debugging & Trade-Offs`,
+      phase: 'Advanced',
+      difficulty: 'hard',
+      focus: 'Performance bottlenecks, concurrency pitfalls, and production edge cases'
+    };
+  } else {
+    return {
+      title: `${topic}: System Integration & Mock Interview Drills`,
+      phase: 'Integration',
+      difficulty: 'hard',
+      focus: 'End-to-end integration and mock interview question readiness'
+    };
+  }
+}
 
 /**
  * Builds deterministic day-by-day roadmap slots.
@@ -21,7 +68,7 @@ export const MIN_SLOT_MINUTES = 20;
  * @param {string|Date} params.interviewDate - target interview date
  * @param {number} params.dailyPreparationMinutes - daily study limit (default 60)
  * @param {Array<Object>} params.gaps - list of identified skill gaps
- * @returns {Object} { totalDays, totalMinutes, allocatedTasks, uncoveredGaps, revisionDay }
+ * @returns {Object} { totalDays, totalMinutesAvailable, studyDays, scheduledTasks, uncoveredGaps, allocationSummary }
  */
 export function allocateRoadmapSlots({
   userAvailableDays = 14,
@@ -29,8 +76,8 @@ export function allocateRoadmapSlots({
   dailyPreparationMinutes = 60,
   gaps = []
 }) {
-  // 1. Days available calculation
-  let daysAvailable = userAvailableDays > 0 ? userAvailableDays : 14;
+  // 1. Calculate available days
+  let daysAvailable = userAvailableDays > 0 ? Number(userAvailableDays) : 14;
 
   if (interviewDate) {
     const now = new Date();
@@ -42,18 +89,22 @@ export function allocateRoadmapSlots({
     }
   }
 
-  // Bound to at least 1 day
   daysAvailable = Math.max(1, Math.min(180, daysAvailable));
 
-  // 2. Total study days excluding final revision day (if > 1 day)
+  // 2. Determine study days (reserve final day for review if > 1 day)
   const isMultiDay = daysAvailable > 1;
   const studyDays = isMultiDay ? daysAvailable - 1 : 1;
-  const dailyMins = Math.max(20, dailyPreparationMinutes || 60);
-  const totalStudyMinutes = studyDays * dailyMins;
+  const dailyMins = Math.max(20, Number(dailyPreparationMinutes) || 60);
 
   // 3. Rank gaps by importanceWeight * (100 - requirementScore)
-  const rankedGaps = (gaps || []).map(gap => {
-    const weight = getImportanceMultiplier(gap.importance);
+  const rawGaps = Array.isArray(gaps) && gaps.length > 0 ? gaps : [
+    { id: 'core_cs', name: 'Data Structures & Algorithms', importance: 'critical', score: 30 },
+    { id: 'web_arch', name: 'System Design & REST Architecture', importance: 'important', score: 40 },
+    { id: 'db_opt', name: 'Database Queries & Optimization', importance: 'important', score: 45 }
+  ];
+
+  const rankedGaps = rawGaps.map(gap => {
+    const weight = getImportanceMultiplier(gap.importance || 'important');
     const score = typeof gap.score === 'number' ? gap.score : 0;
     const gapSeverity = Math.max(0, 100 - score);
     const priorityScore = weight * gapSeverity;
@@ -67,124 +118,108 @@ export function allocateRoadmapSlots({
 
   rankedGaps.sort((a, b) => b.priorityScore - a.priorityScore);
 
-  const totalPriorityScore = rankedGaps.reduce((sum, g) => sum + g.priorityScore, 0);
-
-  // 4. Proportional time allocation with minimum 20 min slots
-  const allocatedGaps = [];
-  const uncoveredGaps = [];
-  let remainingMinutesToDistribute = totalStudyMinutes;
-
-  if (totalPriorityScore > 0 && rankedGaps.length > 0) {
-    for (const gap of rankedGaps) {
-      if (remainingMinutesToDistribute < MIN_SLOT_MINUTES) {
-        uncoveredGaps.push({
-          ...gap,
-          reason: 'Insufficient study time remaining; prioritized higher impact gaps'
-        });
-        continue;
-      }
-
-      // Proportional share rounded to 20-min chunks
-      const share = (gap.priorityScore / totalPriorityScore) * totalStudyMinutes;
-      const roundedMinutes = Math.max(MIN_SLOT_MINUTES, Math.round(share / MIN_SLOT_MINUTES) * MIN_SLOT_MINUTES);
-      const allocatedMins = Math.min(remainingMinutesToDistribute, roundedMinutes);
-
-      if (allocatedMins >= MIN_SLOT_MINUTES) {
-        allocatedGaps.push({
-          ...gap,
-          allocatedMinutes: allocatedMins
-        });
-        remainingMinutesToDistribute -= allocatedMins;
-      } else {
-        uncoveredGaps.push({
-          ...gap,
-          reason: 'Time quota depleted before meeting minimum 20-minute threshold'
-        });
-      }
-    }
+  // 4. Distribute study days across ranked gaps
+  // Ensure every study day from 1 to studyDays has assigned topics without skips
+  const dayAssignments = [];
+  for (let d = 1; d <= studyDays; d++) {
+    dayAssignments.push({
+      day: d,
+      slots: []
+    });
   }
 
-  // 5. Build Day-by-Day schedule
+  // Count how many days each gap will receive
+  const gapDayCounts = new Map();
+  rankedGaps.forEach(g => gapDayCounts.set(g.id || g.name, 0));
+
+  for (let d = 0; d < studyDays; d++) {
+    const gap = rankedGaps[d % rankedGaps.length];
+    const key = gap.id || gap.name;
+    const currentCount = gapDayCounts.get(key) || 0;
+    gapDayCounts.set(key, currentCount + 1);
+
+    const progressive = getProgressivePhase(
+      gap.normalizedName || gap.name,
+      currentCount,
+      Math.ceil(studyDays / rankedGaps.length)
+    );
+
+    dayAssignments[d].slots.push({
+      topic: gap.normalizedName || gap.name,
+      requirementRef: gap.requirementRef || gap.id,
+      gapRef: gap.id || gap.requirementRef,
+      title: progressive.title,
+      phase: progressive.phase,
+      difficulty: progressive.difficulty,
+      priority: gap.importance || 'important',
+      estimatedMinutes: dailyMins,
+      reason: `Day ${d + 1} milestone targeting ${gap.normalizedName || gap.name}: ${progressive.focus}`
+    });
+  }
+
+  // 5. Flatten scheduled tasks and ensure chronological order
   const scheduledTasks = [];
-  let currentDay = 1;
-  let currentDayMinutesUsed = 0;
-
-  for (const gap of allocatedGaps) {
-    let gapMinutesRemaining = gap.allocatedMinutes;
-
-    while (gapMinutesRemaining > 0 && currentDay <= studyDays) {
-      const roomInDay = dailyMins - currentDayMinutesUsed;
-
-      if (roomInDay < MIN_SLOT_MINUTES) {
-        // Move to next day
-        currentDay++;
-        currentDayMinutesUsed = 0;
-        if (currentDay > studyDays) break;
-        continue;
-      }
-
-      const slotMinutes = Math.min(gapMinutesRemaining, roomInDay);
+  for (const dayObj of dayAssignments) {
+    for (const slot of dayObj.slots) {
       scheduledTasks.push({
-        day: currentDay,
-        topic: gap.normalizedName || gap.name,
-        requirementRef: gap.requirementRef || gap.id,
-        gapRef: gap.id || gap.requirementRef,
-        estimatedMinutes: slotMinutes,
-        priority: gap.importance || 'important',
-        difficulty: gap.difficulty || 'medium',
-        reason: `Targeting gap in ${gap.normalizedName || gap.name} (Priority Score: ${gap.priorityScore})`,
+        day: dayObj.day,
+        title: slot.title,
+        topic: slot.topic,
+        requirementRef: slot.requirementRef,
+        gapRef: slot.gapRef,
+        estimatedMinutes: slot.estimatedMinutes,
+        priority: slot.priority,
+        difficulty: slot.difficulty,
+        reason: slot.reason,
         status: 'pending'
       });
-
-      gapMinutesRemaining -= slotMinutes;
-      currentDayMinutesUsed += slotMinutes;
-
-      if (currentDayMinutesUsed >= dailyMins) {
-        currentDay++;
-        currentDayMinutesUsed = 0;
-      }
     }
   }
 
-  // Final Day: Revision & Final Checklist
+  // 6. Final Day: Review & Final Checklist (if multi-day)
   const finalDayNumber = daysAvailable;
   const revisionTasks = [];
   if (isMultiDay) {
     revisionTasks.push({
       day: finalDayNumber,
+      title: 'Final Comprehensive Review & Concept Consolidation',
       topic: 'Final Comprehensive Review',
       requirementRef: 'revision_comprehensive',
       gapRef: 'revision',
       estimatedMinutes: Math.round(dailyMins * 0.6),
       priority: 'critical',
       difficulty: 'medium',
-      reason: 'Consolidate key concepts and review notes across all completed topics before the target interview date.',
+      reason: 'Consolidate key concepts, system trade-offs, and STAR stories across all completed topics.',
       status: 'pending'
     });
     revisionTasks.push({
       day: finalDayNumber,
+      title: 'Final Interview Readiness & Logistics Audit',
       topic: 'Final Interview Readiness Checklist',
       requirementRef: 'final_checklist_audit',
       gapRef: 'checklist',
       estimatedMinutes: Math.round(dailyMins * 0.4),
       priority: 'critical',
       difficulty: 'easy',
-      reason: 'Complete the finalized job-specific interview checklist and verify readiness requirements.',
+      reason: 'Verify role requirements, logistics, company insights, and final checklist readiness.',
       status: 'pending'
     });
   }
+
+  // Strictly sort all tasks by day ascending
+  const allTasks = [...scheduledTasks, ...revisionTasks].sort((a, b) => a.day - b.day);
 
   return {
     totalDays: daysAvailable,
     dailyMinutes: dailyMins,
     totalMinutesAvailable: daysAvailable * dailyMins,
     studyDays,
-    scheduledTasks: [...scheduledTasks, ...revisionTasks],
-    uncoveredGaps,
+    scheduledTasks: allTasks,
+    uncoveredGaps: [],
     allocationSummary: {
-      allocatedGapsCount: allocatedGaps.length,
-      uncoveredGapsCount: uncoveredGaps.length,
-      totalTasksCount: scheduledTasks.length + revisionTasks.length
+      allocatedGapsCount: rankedGaps.length,
+      uncoveredGapsCount: 0,
+      totalTasksCount: allTasks.length
     }
   };
 }

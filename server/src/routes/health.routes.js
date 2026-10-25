@@ -12,7 +12,7 @@ router.get('/health', (req, res) => {
     success: true,
     data: {
       status: 'ok',
-      service: 'HireMate AI API Server',
+      service: 'HireMate Nexus API Server',
       database: dbStatusMap[dbState] || 'unknown',
       databaseConnected: dbState === 1,
       timestamp: new Date().toISOString(),

@@ -1,5 +1,5 @@
-﻿/**
- * Shared Enums for HireMate AI
+/**
+ * Shared Enums for HireMate Nexus
  * Pure JavaScript, zero dependencies.
  */
 

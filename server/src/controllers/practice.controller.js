@@ -4,15 +4,18 @@ import { JobAnalysis } from '../models/jobAnalysis.model.js';
 import {
   generateCuratedQuestions,
   generateAiPracticeQuestions,
+  generateTargetedPracticeQuestions,
   selectDistinctQuestions,
-  isDuplicateOrNearDuplicate
+  isDuplicateOrNearDuplicate,
+  evaluateCodingSolution,
+  DIFFICULTY_MAP
 } from '../services/practice.service.js';
 import { evaluateAdaptiveDifficulty } from '../services/scoring/adaptiveDifficulty.js';
 
 export async function generatePracticeQuestions(req, res) {
   try {
     const { applicationId } = req.params;
-    const isReset = req.query.reset === 'true';
+    const isReset = req.query.reset === 'true' || req.body?.reset === true;
 
     // Optional manual reset of practice progress
     if (isReset) {
@@ -23,69 +26,68 @@ export async function generatePracticeQuestions(req, res) {
       );
     }
 
-    // 1. Fetch past attempts to identify already served / completed question IDs
+    // Extract dynamic selection controls
+    const rawCategory = req.body?.category || req.query?.category || 'Programming Languages';
+    const rawSkill = req.body?.skill || req.query?.skill || 'JavaScript';
+    const rawDifficulty = req.body?.difficulty || req.query?.difficulty || 'Intermediate';
+    const rawCount = req.body?.count || req.query?.count || 10;
+    const rawMode = req.body?.mode || req.query?.mode || 'mcq';
+
+    const difficulty = DIFFICULTY_MAP[rawDifficulty] || 'medium';
+    const count = Math.max(1, Math.min(20, parseInt(rawCount, 10) || 10));
+    const mode = rawMode === 'coding_challenges' ? 'coding_challenges' : 'mcq';
+
+    // 1. Fetch past attempts to identify already answered question IDs
     const attempts = await PracticeAttempt.find({
       applicationId,
       firebaseUid: req.user.uid
     }).select('questionId isCorrect timeTakenSeconds topic difficulty');
 
     const attemptedIds = attempts.map(a => String(a.questionId));
-    const attemptedIdSet = new Set(attemptedIds);
 
-    // 2. Fetch existing questions for this application
+    // 2. Fetch existing questions for this application & mode
     const existingDocs = await PracticeQuestion.find({
       applicationId,
       firebaseUid: req.user.uid
     });
 
-    const attemptedQuestionsTexts = existingDocs
-      .filter(q => attemptedIdSet.has(String(q._id)))
-      .map(q => q.question);
+    // Combine both attempted IDs and previously served/active session IDs so questions from earlier sessions are never re-served
+    const servedOrAttemptedIdSet = new Set([
+      ...attemptedIds,
+      ...existingDocs
+        .filter(q => q.served === true || (q.testSessionId && q.testSessionId !== ''))
+        .map(q => String(q._id))
+    ]);
+    const servedOrAttemptedIds = Array.from(servedOrAttemptedIdSet);
 
-    // 3. Determine target adaptive difficulty based on recent attempt history
-    let targetDifficulty = 'medium';
-    if (attempts.length >= 5) {
-      const recent = attempts.slice(-5);
-      const acc = recent.filter(a => a.isCorrect).length / 5;
-      if (acc >= 0.80) targetDifficulty = 'hard';
-      else if (acc < 0.40) targetDifficulty = 'easy';
-    }
+    const servedOrAttemptedQuestionsTexts = existingDocs
+      .filter(q => servedOrAttemptedIdSet.has(String(q._id)))
+      .map(q => q.question || q.problemStatement);
 
-    // 4. Check available unattempted questions in existing database bank
-    let unattempted = existingDocs.filter(q => !attemptedIdSet.has(String(q._id)));
+    // 3. Find unattempted and unserved questions matching skill and mode if any exist
+    let matchingUnattempted = existingDocs.filter(q =>
+      !servedOrAttemptedIdSet.has(String(q._id)) &&
+      (q.skill === rawSkill || q.requirementRef === rawSkill) &&
+      (q.mode || 'mcq') === mode
+    );
 
-    // 5. If fewer than 10 unattempted questions remain, generate fresh distinct questions
-    if (unattempted.length < 10) {
-      const jobAnalysis = await JobAnalysis.findOne({ applicationId, firebaseUid: req.user.uid });
-      const requirements = jobAnalysis?.requirements || [];
-      const skills = requirements.map(r => r.normalizedName || r.name);
-
-      // Try AI question generation first if Gemini client is available
-      const aiQuestions = await generateAiPracticeQuestions({
+    // 4. If fewer than requested count exist, generate targeted questions
+    if (matchingUnattempted.length < count) {
+      const targeted = await generateTargetedPracticeQuestions({
         applicationId,
         firebaseUid: req.user.uid,
-        skills,
-        difficulty: targetDifficulty,
-        count: 5,
-        existingQuestions: existingDocs
+        category: rawCategory,
+        skill: rawSkill,
+        difficulty,
+        count,
+        mode,
+        existingQuestions: existingDocs,
+        excludeIds: servedOrAttemptedIds
       });
 
-      // Curate deterministic questions passing existing questions to avoid any duplicate
-      const combinedExisting = [...existingDocs, ...aiQuestions];
-      const curated = generateCuratedQuestions({
-        applicationId,
-        firebaseUid: req.user.uid,
-        requirements,
-        count: 15,
-        targetDifficulty,
-        existingQuestions: combinedExisting
-      });
-
-      const newCandidates = [...aiQuestions, ...curated];
-
-      // Insert only genuinely new non-duplicate questions
+      // Insert only genuinely non-duplicate questions
       const toInsert = [];
-      for (const cand of newCandidates) {
+      for (const cand of targeted) {
         if (!isDuplicateOrNearDuplicate(cand, existingDocs) && !isDuplicateOrNearDuplicate(cand, toInsert)) {
           toInsert.push(cand);
         }
@@ -93,30 +95,30 @@ export async function generatePracticeQuestions(req, res) {
 
       if (toInsert.length > 0) {
         const inserted = await PracticeQuestion.insertMany(toInsert);
-        unattempted = [...unattempted, ...inserted];
+        matchingUnattempted = [...matchingUnattempted, ...inserted];
       }
     }
 
-    // 6. Select distinct questions for this session, strictly excluding previously attempted questions
+    // 5. Select distinct questions for this session
     const selected = selectDistinctQuestions({
-      pool: unattempted,
-      count: 10,
-      excludeIds: attemptedIds,
-      excludeQuestions: attemptedQuestionsTexts,
-      targetDifficulty
+      pool: matchingUnattempted,
+      count,
+      excludeIds: servedOrAttemptedIds,
+      excludeQuestions: servedOrAttemptedQuestionsTexts,
+      targetDifficulty: difficulty
     });
 
-    // 7. Handle exhausted question bank gracefully
+    // 6. Handle exhausted question bank gracefully
     if (selected.length === 0) {
       return res.status(200).json({
         success: true,
         data: [],
         exhausted: true,
-        message: 'All available practice questions for your target skills have been completed. You have achieved full coverage.'
+        message: `All available practice questions for ${rawSkill} have been completed. You can practice another skill or reset history.`
       });
     }
 
-    // 8. Assign new session ID and mark selected questions as served
+    // 7. Assign new session ID and mark selected questions as served
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const selectedIds = selected.map(q => q._id);
 
@@ -136,7 +138,8 @@ export async function generatePracticeQuestions(req, res) {
       success: true,
       data: clientSafe,
       sessionId,
-      exhausted: false
+      exhausted: false,
+      count: clientSafe.length
     });
   } catch (error) {
     return res.status(500).json({
@@ -181,7 +184,7 @@ export async function getPracticeQuestions(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: unattempted.slice(0, 10),
+      data: unattempted.slice(0, 20),
       exhausted: unattempted.length === 0
     });
   } catch (error) {
@@ -210,7 +213,23 @@ export async function submitQuestionAttempt(req, res) {
       });
     }
 
-    const isCorrect = String(answer).trim() === String(question.correctAnswer).trim();
+    let isCorrect = false;
+    let feedbackMessage = '';
+    let testResults = null;
+
+    if (question.mode === 'coding_challenges' || question.type === 'code_writing') {
+      const evalResult = evaluateCodingSolution(answer, question.testCases);
+      isCorrect = evalResult.allPassed;
+      testResults = evalResult.results;
+      feedbackMessage = isCorrect
+        ? 'Well done! Keep going.'
+        : (evalResult.failureReason || 'Your solution did not pass all test cases. Check the failed test cases below.');
+    } else {
+      isCorrect = String(answer).trim() === String(question.correctAnswer).trim();
+      feedbackMessage = isCorrect
+        ? 'Well done! Keep going.'
+        : 'Incorrect. Review the correct option and explanation below.';
+    }
 
     const attempt = new PracticeAttempt({
       firebaseUid: req.user.uid,
@@ -242,8 +261,10 @@ export async function submitQuestionAttempt(req, res) {
       success: true,
       data: {
         isCorrect,
-        correctAnswer: question.correctAnswer,
+        feedbackMessage,
+        correctAnswer: question.correctAnswer || question.starterCode || '',
         explanation: question.explanation,
+        testResults,
         adaptiveEvaluation: adaptiveEval
       }
     });

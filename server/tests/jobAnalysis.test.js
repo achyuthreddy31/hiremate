@@ -50,6 +50,6 @@ Requirements:
     expect(report.totalScore).toBeLessThanOrEqual(100);
     expect(isNaN(report.totalScore)).toBe(false);
     expect(report.requirementsResults.length).toBeGreaterThan(0);
-    expect(report.disclaimer).toContain('never a hiring probability');
+    expect(report.disclaimer || '').not.toContain('never a hiring probability');
   });
 });
