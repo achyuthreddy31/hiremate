@@ -1,4 +1,4 @@
-﻿import { WORKFLOW_STAGES } from '../../../shared/constants.js';
+import { WORKFLOW_STAGES } from '../../../shared/constants.js';
 import { GenerationJob } from '../models/generationJob.model.js';
 import { Application } from '../models/application.model.js';
 import { JobAnalysis } from '../models/jobAnalysis.model.js';
@@ -15,7 +15,7 @@ import { ReadinessSnapshot } from '../models/readinessSnapshot.model.js';
 import { analyzeJobDescription, generateMatchReportData } from './jobAnalysis.service.js';
 import { buildCompanyResearchDataset } from './companyResearch.service.js';
 import { generateRoadmapPlan } from './roadmap.service.js';
-import { generateCuratedQuestions } from './practice.service.js';
+import { generateCuratedQuestions, isDuplicateOrNearDuplicate } from './practice.service.js';
 import { buildInterviewPrepDataset } from './interviewPrep.service.js';
 import { calculateInterviewReadinessScore } from './scoring/interviewReadinessScore.js';
 
@@ -170,16 +170,41 @@ async function executeIndividualStage({ stageName, applicationId, firebaseUid, a
       break;
     }
 
-    case 'generate_practice_tests':
+    case 'generate_practice_tests': {
+      const jobAnalysis = await JobAnalysis.findOne({ applicationId, firebaseUid });
+      const existing = await PracticeQuestion.find({ applicationId, firebaseUid });
+      if (existing.length < 5) {
+        const questions = generateCuratedQuestions({
+          applicationId,
+          firebaseUid,
+          requirements: jobAnalysis?.requirements || [],
+          count: 10,
+          existingQuestions: existing
+        });
+        if (questions.length > 0) {
+          await PracticeQuestion.insertMany(questions);
+        }
+      }
+      break;
+    }
+
     case 'generate_coding_practice': {
       const jobAnalysis = await JobAnalysis.findOne({ applicationId, firebaseUid });
-      const questions = generateCuratedQuestions({
+      const existing = await PracticeQuestion.find({ applicationId, firebaseUid });
+      const codingQuestions = generateCuratedQuestions({
         applicationId,
         firebaseUid,
-        requirements: jobAnalysis?.requirements || []
+        requirements: jobAnalysis?.requirements || [],
+        count: 5,
+        preferredTypes: ['debugging', 'output_prediction', 'code_reading', 'coding_mcq'],
+        existingQuestions: existing
       });
-      await PracticeQuestion.deleteMany({ applicationId, firebaseUid });
-      await PracticeQuestion.insertMany(questions);
+      const uniqueCoding = codingQuestions.filter(
+        q => !isDuplicateOrNearDuplicate(q, existing)
+      );
+      if (uniqueCoding.length > 0) {
+        await PracticeQuestion.insertMany(uniqueCoding);
+      }
       break;
     }
 

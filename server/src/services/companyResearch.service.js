@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Company Research & Grounding Parser
  * Strictly implements Section 5.4 and 5.5.
  *
@@ -9,6 +9,16 @@
  * - Never invent URLs.
  * - Company labels: 'verified', 'inferred', 'predicted', 'unavailable'.
  */
+
+function shuffleQuizOptions(options, correctValue) {
+  const arr = [...options];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  const correctAnswerIndex = arr.indexOf(correctValue);
+  return { options: arr, correctAnswerIndex };
+}
 
 export function parseGroundingBulletPoints({
   bulletLines = [],
@@ -81,7 +91,7 @@ export function parseGroundingBulletPoints({
 }
 
 /**
- * Builds deterministic company research items & quiz.
+ * Builds deterministic company research items & non-duplicate quiz.
  */
 export function buildCompanyResearchDataset(companyName = 'Target Company') {
   const items = [
@@ -119,20 +129,69 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     }
   ];
 
-  // Deterministic quiz built ONLY from verified items
-  const verifiedOnly = items.filter(i => i.label === 'verified');
-  const quiz = verifiedOnly.map((item, index) => ({
-    question: `According to official sources, what is a primary focus or value of ${companyName}?`,
-    options: [
-      item.information,
-      `Unrelated focus on traditional legacy desktop manufacturing`,
-      `Exclusive reliance on outsourced non-engineering contractors`,
-      `No formal technical or organizational documentation`
+  // Distractor banks per category to prevent repeating identical options
+  const distractorsByCategory = {
+    overview: [
+      `Specializes solely in traditional legacy mechanical equipment manufacturing.`,
+      `Operates exclusively as an outsourced non-technical third-party call center.`,
+      `Does not maintain any internal digital software services or customer platforms.`
     ],
-    correctAnswerIndex: 0,
-    explanation: `Verified directly from official company records: ${item.sourceUrl}`,
-    sourceUrl: item.sourceUrl
-  }));
+    culture_values: [
+      `Enforces strict top-down micromanagement where automated unit tests are strictly prohibited.`,
+      `Explicitly discourages cross-team technical communication and shared documentation.`,
+      `Requires all production releases to be performed without code reviews or staging environments.`
+    ],
+    tech_stack: [
+      `Relies entirely on legacy 1970s punch-card mainframes without internet access.`,
+      `Forbids the use of any compilers, version control systems, or cloud infrastructure.`,
+      `Stores all application data in unindexed flat text files on local desktop floppy drives.`
+    ],
+    interview_process: [
+      `Hires candidates purely based on lottery draws without reviewing technical experience.`,
+      `Requires an eight-week on-site unpaid physical obstacle course.`,
+      `Skips all verification and assigns engineering titles without interviews.`
+    ]
+  };
+
+  // Deterministic quiz built ONLY from verified items, with distinct prompts per category
+  const verifiedOnly = items.filter(i => i.label === 'verified');
+  const seenPrompts = new Set();
+  const quiz = [];
+
+  for (let index = 0; index < verifiedOnly.length; index++) {
+    const item = verifiedOnly[index];
+
+    let questionPrompt;
+    if (item.category === 'overview') {
+      questionPrompt = `According to official sources, what is the core mission and business focus of ${companyName}?`;
+    } else if (item.category === 'culture_values') {
+      questionPrompt = `According to official company records, what core engineering or workplace value is emphasized at ${companyName}?`;
+    } else if (item.category === 'tech_stack') {
+      questionPrompt = `What is officially verified regarding the core technology stack and infrastructure at ${companyName}?`;
+    } else if (item.category === 'interview_process') {
+      questionPrompt = `What is officially verified regarding the technical assessment standards at ${companyName}?`;
+    } else {
+      questionPrompt = `Regarding ${item.category.replace(/_/g, ' ')}, what is officially verified about ${companyName}?`;
+    }
+
+    // Ensure prompt uniqueness even if multiple items have the same category
+    if (seenPrompts.has(questionPrompt)) {
+      questionPrompt = `${questionPrompt} (Item #${index + 1})`;
+    }
+    seenPrompts.add(questionPrompt);
+
+    const distractors = distractorsByCategory[item.category] || distractorsByCategory.overview;
+    const rawOptions = [item.information, ...distractors.slice(0, 3)];
+    const { options, correctAnswerIndex } = shuffleQuizOptions(rawOptions, item.information);
+
+    quiz.push({
+      question: questionPrompt,
+      options,
+      correctAnswerIndex,
+      explanation: `Verified directly from official company records: ${item.sourceUrl}`,
+      sourceUrl: item.sourceUrl
+    });
+  }
 
   const sectionsReviewed = [
     { category: 'overview', reviewed: false },

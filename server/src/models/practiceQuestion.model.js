@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const practiceQuestionSchema = new mongoose.Schema({
   firebaseUid: {
@@ -55,11 +55,25 @@ const practiceQuestionSchema = new mongoose.Schema({
   expectedTimeSeconds: {
     type: Number,
     default: 60
+  },
+  testSessionId: {
+    type: String,
+    default: null,
+    index: true
+  },
+  served: {
+    type: Boolean,
+    default: false
+  },
+  servedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
 });
 
 practiceQuestionSchema.index({ firebaseUid: 1, applicationId: 1, skill: 1 });
+practiceQuestionSchema.index({ firebaseUid: 1, applicationId: 1, testSessionId: 1 });
 
 export const PracticeQuestion = mongoose.model('PracticeQuestion', practiceQuestionSchema);

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -11,7 +11,8 @@ import {
   Timer,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  RotateCcw
 } from 'lucide-react';
 
 export default function PracticePage() {
@@ -26,6 +27,7 @@ export default function PracticePage() {
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isExhausted, setIsExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState('quiz'); // 'quiz' | 'performance'
 
   useEffect(() => {
@@ -40,7 +42,9 @@ export default function PracticePage() {
         apiClient.get(`/practice/performance/${applicationId}`).catch(() => ({ data: [] }))
       ]);
       setApp(appRes.data);
-      setQuestions(qRes.data || []);
+      const fetchedQuestions = qRes.data || [];
+      setQuestions(fetchedQuestions);
+      setIsExhausted(!!qRes.exhausted && fetchedQuestions.length === 0);
       setPerformance(perfRes.data || []);
     } catch (err) {
       setError(err.message || 'Failed to load practice questions');
@@ -49,15 +53,20 @@ export default function PracticePage() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (reset = false) => {
     setGenerating(true);
     setError('');
     try {
-      const res = await apiClient.post(`/practice/generate/${applicationId}`);
-      setQuestions(res.data);
+      const endpoint = reset
+        ? `/practice/generate/${applicationId}?reset=true`
+        : `/practice/generate/${applicationId}`;
+      const res = await apiClient.post(endpoint);
+      const generated = res.data || [];
+      setQuestions(generated);
       setCurrentIndex(0);
       setSubmissionResult(null);
       setSelectedAnswer('');
+      setIsExhausted(!!res.exhausted && generated.length === 0);
     } catch (err) {
       setError(err.message || 'Failed to generate questions');
     } finally {
@@ -108,12 +117,12 @@ export default function PracticePage() {
             </p>
           </div>
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(false)}
             disabled={generating}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
-            <span>{generating ? 'Curating 10 Questions...' : 'Generate 10-Question Test'}</span>
+            <span>{generating ? 'Selecting Questions...' : 'Generate 10-Question Test'}</span>
           </button>
         </div>
 
@@ -147,19 +156,39 @@ export default function PracticePage() {
         {activeTab === 'quiz' && (
           <div>
             {questions.length === 0 && !loading && (
-              <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm">
-                <Cpu size={32} className="text-indigo-600 mx-auto mb-3" />
-                <h3 className="font-bold text-base">No Active Practice Questions</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-1 mb-5 leading-relaxed">
-                  Generate a targeted 10-question practice test matching the technical requirements of this job.
-                </p>
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
-                >
-                  Generate 10-Question Test
-                </button>
+              <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm space-y-4">
+                {isExhausted ? (
+                  <>
+                    <Award size={40} className="text-amber-500 mx-auto" />
+                    <h3 className="font-extrabold text-lg">Question Bank Completed!</h3>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                      You have completed all available practice and coding questions for this application. To practice again from the beginning, you can reset your attempt history.
+                    </p>
+                    <button
+                      onClick={() => handleGenerate(true)}
+                      disabled={generating}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset History & Practice Again</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Cpu size={36} className="text-indigo-600 mx-auto" />
+                    <h3 className="font-bold text-base">No Active Practice Questions</h3>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                      Generate a targeted 10-question practice test matching the technical requirements of this job. Previously served questions will not be repeated.
+                    </p>
+                    <button
+                      onClick={() => handleGenerate(false)}
+                      disabled={generating}
+                      className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                    >
+                      Generate 10-Question Test
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -257,19 +286,33 @@ export default function PracticePage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end">
-                      {currentIndex < questions.length - 1 ? (
-                        <button
-                          onClick={handleNext}
-                          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"
-                        >
-                          Next Question →
-                        </button>
-                      ) : (
-                        <div className="text-xs text-[var(--text-muted)] font-semibold">
-                          Practice session complete! Check your updated Interview Readiness score.
-                        </div>
-                      )}
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="text-xs text-[var(--text-muted)] font-semibold">
+                        {currentIndex < questions.length - 1 ? (
+                          `Question ${currentIndex + 1} completed`
+                        ) : (
+                          'Practice session complete! Check your updated Interview Readiness score.'
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {currentIndex < questions.length - 1 ? (
+                          <button
+                            onClick={handleNext}
+                            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"
+                          >
+                            Next Question →
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerate(false)}
+                            disabled={generating}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm transition-all"
+                          >
+                            <RefreshCw size={14} className={generating ? "animate-spin" : ""} />
+                            <span>Start Next Practice Test</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
