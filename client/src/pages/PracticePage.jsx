@@ -112,6 +112,8 @@ export default function PracticePage() {
     setSelectedSkill(available[0] || '');
     setSkillSearch('');
     setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
   };
 
   const fetchPracticeData = async () => {
@@ -377,7 +379,16 @@ export default function PracticePage() {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {questions.length > 0 && questions.length < selectedCount ? (
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                Note: Displaying all {questions.length} available unique questions for {selectedSkill} ({selectedDifficulty}).
+              </span>
+            ) : (
+              <span className="text-xs text-[var(--text-muted)]">
+                Selecting {selectedCount} questions will configure a fresh unserved set.
+              </span>
+            )}
             <button
               onClick={() => handleStartSession(false)}
               disabled={generating}
@@ -661,14 +672,10 @@ export default function PracticePage() {
                 {!submissionResult ? (
                   <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
                     {(currentQ.mode === 'coding_challenges' || currentQ.type === 'code_writing') ? (
-                      <button
-                        onClick={handleRevealSolution}
-                        disabled={revealing || !!revealedSolution}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-all disabled:opacity-50"
-                      >
-                        <Eye size={14} className={revealing ? "animate-spin" : ""} />
-                        <span>{revealing ? 'Fetching Solution...' : (revealedSolution ? 'Reference Solution Displayed' : 'Show Solution')}</span>
-                      </button>
+                      <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 font-medium">
+                        <Key size={13} className="text-slate-400 shrink-0" />
+                        <span>Reference solution is locked until you submit your attempt.</span>
+                      </div>
                     ) : (
                       <div />
                     )}
@@ -706,7 +713,7 @@ export default function PracticePage() {
                           {submissionResult.isCorrect ? 'Well done! Keep going.' : 'Incorrect'}
                         </div>
 
-                        {!submissionResult.isCorrect && submissionResult.correctAnswer && (
+                        {!submissionResult.isCorrect && submissionResult.correctAnswer && currentQ.mode !== 'coding_challenges' && currentQ.type !== 'code_writing' && (
                           <div className="pt-1">
                             <span className="font-bold">Correct Solution / Answer: </span>
                             <pre className="mt-1 p-2 rounded bg-slate-900 text-slate-100 font-mono text-[11px] overflow-x-auto">
@@ -760,6 +767,16 @@ export default function PracticePage() {
                           : 'All questions in this session answered'}
                       </div>
                       <div className="flex items-center gap-3">
+                        {(currentQ.mode === 'coding_challenges' || currentQ.type === 'code_writing') && !revealedSolution && (
+                          <button
+                            onClick={handleRevealSolution}
+                            disabled={revealing}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-colors"
+                          >
+                            <Eye size={14} className={revealing ? "animate-spin" : ""} />
+                            <span>{revealing ? 'Unlocking Solution...' : 'Show Reference Solution'}</span>
+                          </button>
+                        )}
                         <button
                           onClick={handleNextQuestion}
                           className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"

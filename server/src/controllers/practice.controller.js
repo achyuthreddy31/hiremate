@@ -45,7 +45,7 @@ export async function generatePracticeQuestions(req, res) {
 
     const attemptedIds = attempts.map(a => String(a.questionId));
 
-    // 2. Fetch existing questions for this application & mode
+    // 2. Fetch existing questions for this application
     const existingDocs = await PracticeQuestion.find({
       applicationId,
       firebaseUid: req.user.uid
@@ -64,14 +64,15 @@ export async function generatePracticeQuestions(req, res) {
       .filter(q => servedOrAttemptedIdSet.has(String(q._id)))
       .map(q => q.question || q.problemStatement);
 
-    // 3. Find unattempted and unserved questions matching skill and mode if any exist
+    // 3. Find unattempted and unserved questions matching skill, mode, and target difficulty
     let matchingUnattempted = existingDocs.filter(q =>
       !servedOrAttemptedIdSet.has(String(q._id)) &&
       (q.skill === rawSkill || q.requirementRef === rawSkill) &&
-      (q.mode || 'mcq') === mode
+      (q.mode || 'mcq') === mode &&
+      (!difficulty || q.difficulty === difficulty)
     );
 
-    // 4. If fewer than requested count exist, generate targeted questions
+    // 4. If fewer than requested count exist, generate targeted questions with a generous candidate pool
     if (matchingUnattempted.length < count) {
       const targeted = await generateTargetedPracticeQuestions({
         applicationId,
@@ -79,7 +80,7 @@ export async function generatePracticeQuestions(req, res) {
         category: rawCategory,
         skill: rawSkill,
         difficulty,
-        count,
+        count: Math.max(count * 2, 10),
         mode,
         existingQuestions: existingDocs,
         excludeIds: servedOrAttemptedIds
@@ -100,13 +101,34 @@ export async function generatePracticeQuestions(req, res) {
     }
 
     // 5. Select distinct questions for this session
-    const selected = selectDistinctQuestions({
+    let selected = selectDistinctQuestions({
       pool: matchingUnattempted,
       count,
       excludeIds: servedOrAttemptedIds,
       excludeQuestions: servedOrAttemptedQuestionsTexts,
       targetDifficulty: difficulty
     });
+
+    // Fallback fulfillment: If still below requested count, pull from any unserved questions for this skill
+    if (selected.length < count) {
+      const broaderUnserved = existingDocs.filter(q =>
+        !servedOrAttemptedIdSet.has(String(q._id)) &&
+        (q.skill === rawSkill || q.requirementRef === rawSkill) &&
+        (q.mode || 'mcq') === mode &&
+        !selected.some(s => String(s._id) === String(q._id))
+      );
+
+      if (broaderUnserved.length > 0) {
+        const fillQuestions = selectDistinctQuestions({
+          pool: broaderUnserved,
+          count: count - selected.length,
+          excludeIds: [...servedOrAttemptedIds, ...selected.map(s => String(s._id))],
+          excludeQuestions: [...servedOrAttemptedQuestionsTexts, ...selected.map(s => s.question || s.problemStatement)],
+          targetDifficulty: null
+        });
+        selected = [...selected, ...fillQuestions];
+      }
+    }
 
     // 6. Handle exhausted question bank gracefully
     if (selected.length === 0) {
@@ -140,7 +162,10 @@ export async function generatePracticeQuestions(req, res) {
       data: clientSafe,
       sessionId,
       exhausted: false,
-      count: clientSafe.length
+      count: clientSafe.length,
+      message: clientSafe.length < count
+        ? `Displaying all ${clientSafe.length} available unique questions for ${rawSkill} (${rawDifficulty}).`
+        : undefined
     });
   } catch (error) {
     return res.status(500).json({
@@ -153,6 +178,7 @@ export async function generatePracticeQuestions(req, res) {
 export async function getPracticeQuestions(req, res) {
   try {
     const { applicationId } = req.params;
+    const { skill, mode } = req.query;
 
     // Fetch all attempted question IDs for this user & application
     const attempts = await PracticeAttempt.find({
@@ -162,19 +188,35 @@ export async function getPracticeQuestions(req, res) {
 
     const attemptedIdSet = new Set(attempts.map(a => String(a.questionId)));
 
-    // Fetch unattempted questions
-    let unattempted = await PracticeQuestion.find({
+    const filter = {
       applicationId,
       firebaseUid: req.user.uid,
       _id: { $nin: Array.from(attemptedIdSet) }
-    }).select('-correctAnswer');
+    };
+    if (skill) {
+      filter.$or = [{ skill }, { requirementRef: skill }];
+    }
+    if (mode) {
+      filter.mode = mode;
+    }
+
+    // Fetch unattempted questions with correctAnswer and referenceSolution omitted
+    let unattempted = await PracticeQuestion.find(filter).select('-correctAnswer -referenceSolution');
 
     // If an active session exists, focus on remaining questions in that session
-    const latestServed = await PracticeQuestion.findOne({
+    const sessionFilter = {
       applicationId,
       firebaseUid: req.user.uid,
       testSessionId: { $ne: null }
-    }).sort({ updatedAt: -1 });
+    };
+    if (skill) {
+      sessionFilter.$or = [{ skill }, { requirementRef: skill }];
+    }
+    if (mode) {
+      sessionFilter.mode = mode;
+    }
+
+    const latestServed = await PracticeQuestion.findOne(sessionFilter).sort({ updatedAt: -1 });
 
     if (latestServed?.testSessionId) {
       const sessionRemaining = unattempted.filter(q => q.testSessionId === latestServed.testSessionId);
@@ -183,9 +225,16 @@ export async function getPracticeQuestions(req, res) {
       }
     }
 
+    const clientSafe = unattempted.slice(0, 20).map(q => {
+      const obj = typeof q.toObject === 'function' ? q.toObject() : { ...q };
+      delete obj.correctAnswer;
+      delete obj.referenceSolution;
+      return obj;
+    });
+
     return res.status(200).json({
       success: true,
-      data: unattempted.slice(0, 20),
+      data: clientSafe,
       exhausted: unattempted.length === 0
     });
   } catch (error) {
@@ -205,7 +254,7 @@ export async function submitQuestionAttempt(req, res) {
       _id: questionId,
       applicationId,
       firebaseUid: req.user.uid
-    }).select('+correctAnswer');
+    }).select('+correctAnswer +referenceSolution');
 
     if (!question) {
       return res.status(404).json({
@@ -263,7 +312,7 @@ export async function submitQuestionAttempt(req, res) {
       data: {
         isCorrect,
         feedbackMessage,
-        correctAnswer: question.correctAnswer || question.starterCode || '',
+        correctAnswer: question.correctAnswer || '',
         explanation: question.explanation,
         testResults,
         adaptiveEvaluation: adaptiveEval
@@ -314,11 +363,28 @@ export async function revealQuestionSolution(req, res) {
   try {
     const { applicationId, questionId } = req.params;
 
+    // Challenge Rule: Candidate must have attempted the challenge before reference solution disclosure is permitted
+    const hasAttempted = await PracticeAttempt.exists({
+      applicationId,
+      firebaseUid: req.user.uid,
+      questionId
+    });
+
+    if (!hasAttempted) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'SOLUTION_LOCKED',
+          message: 'You must submit at least one attempt before revealing the reference solution.'
+        }
+      });
+    }
+
     const question = await PracticeQuestion.findOne({
       _id: questionId,
       applicationId,
       firebaseUid: req.user.uid
-    }).select('+correctAnswer');
+    }).select('+correctAnswer +referenceSolution');
 
     if (!question) {
       return res.status(404).json({
@@ -330,7 +396,7 @@ export async function revealQuestionSolution(req, res) {
     return res.status(200).json({
       success: true,
       data: {
-        solution: question.correctAnswer || '',
+        solution: question.referenceSolution || question.correctAnswer || '',
         explanation: question.explanation || ''
       }
     });

@@ -5228,6 +5228,111 @@ export const CURATED_CODING_CHALLENGES = {
     }
   ],
 
+  Java: [
+    {
+      difficulty: 'easy',
+      problemStatement: 'Implement a method `reverseString(str)` that returns the reversed string in Java.',
+      inputDescription: 'str: string to reverse',
+      outputDescription: 'String reversed',
+      examples: [
+        { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed string in Java' }
+      ],
+      constraints: ['0 <= str.length <= 10^4'],
+      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      testCases: [
+        { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
+        { input: JSON.stringify({ str: 'world' }), expectedOutput: '"dlrow"' }
+      ]
+    },
+    {
+      difficulty: 'medium',
+      problemStatement: 'Implement a method `maxSubArray(nums)` that finds the contiguous subarray with the largest sum and returns its sum in Java.',
+      inputDescription: 'nums: array of integers',
+      outputDescription: 'Integer maximum sum',
+      examples: [
+        { input: 'nums = [-2,1,-3,4,-1,2,1,-5,4]', output: '6', explanation: 'Subarray [4,-1,2,1] has the largest sum 6' }
+      ],
+      constraints: ['1 <= nums.length <= 10^5'],
+      starterCode: 'function maxSubArray(nums) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function maxSubArray(nums) {\n  let maxS = nums[0], curr = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    curr = Math.max(nums[i], curr + nums[i]);\n    maxS = Math.max(maxS, curr);\n  }\n  return maxS;\n}',
+      testCases: [
+        { input: JSON.stringify({ nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4] }), expectedOutput: '6' },
+        { input: JSON.stringify({ nums: [1] }), expectedOutput: '1' }
+      ]
+    }
+  ],
+
+  C: [
+    {
+      difficulty: 'easy',
+      problemStatement: 'Write a function `reverseString(str)` that reverses a string and returns the reversed string in C.',
+      inputDescription: 'str: string to reverse',
+      outputDescription: 'String reversed',
+      examples: [
+        { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed character sequence' }
+      ],
+      constraints: ['0 <= length <= 10^4'],
+      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      testCases: [
+        { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
+        { input: JSON.stringify({ str: 'Nexus' }), expectedOutput: '"suxeN"' }
+      ]
+    },
+    {
+      difficulty: 'medium',
+      problemStatement: 'Write a function `twoSum(nums, target)` that returns the indices of the two numbers in `nums` that add up to `target` in C.',
+      inputDescription: 'nums: integer array, target: integer',
+      outputDescription: 'Array of two indices [i, j]',
+      examples: [
+        { input: 'nums = [2, 7, 11, 15], target = 9', output: '[0, 1]', explanation: '2 + 7 = 9' }
+      ],
+      constraints: ['2 <= nums.length <= 10^4'],
+      starterCode: 'function twoSum(nums, target) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function twoSum(nums, target) {\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const diff = target - nums[i];\n    if (map.has(diff)) return [map.get(diff), i];\n    map.set(nums[i], i);\n  }\n  return [];\n}',
+      testCases: [
+        { input: JSON.stringify({ nums: [2, 7, 11, 15], target: 9 }), expectedOutput: JSON.stringify([0, 1]) },
+        { input: JSON.stringify({ nums: [3, 2, 4], target: 6 }), expectedOutput: JSON.stringify([1, 2]) }
+      ]
+    }
+  ],
+
+  'C++': [
+    {
+      difficulty: 'easy',
+      problemStatement: 'Write a function `reverseString(str)` that reverses a string in C++.',
+      inputDescription: 'str: string to reverse',
+      outputDescription: 'String reversed',
+      examples: [
+        { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed std::string' }
+      ],
+      constraints: ['0 <= str.length() <= 10^4'],
+      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      testCases: [
+        { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
+        { input: JSON.stringify({ str: 'algorithm' }), expectedOutput: '"mhtirogla"' }
+      ]
+    },
+    {
+      difficulty: 'medium',
+      problemStatement: 'Write a function `maxSubArray(nums)` that returns the maximum subarray sum in C++.',
+      inputDescription: 'nums: vector of integers',
+      outputDescription: 'Integer maximum subarray sum',
+      examples: [
+        { input: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]', output: '6', explanation: 'Kadane algorithm maximum subarray sum' }
+      ],
+      constraints: ['1 <= nums.size() <= 10^5'],
+      starterCode: 'function maxSubArray(nums) {\n  // Write your solution here\n  \n}',
+      referenceSolution: 'function maxSubArray(nums) {\n  let maxS = nums[0], curr = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    curr = Math.max(nums[i], curr + nums[i]);\n    maxS = Math.max(maxS, curr);\n  }\n  return maxS;\n}',
+      testCases: [
+        { input: JSON.stringify({ nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4] }), expectedOutput: '6' },
+        { input: JSON.stringify({ nums: [1] }), expectedOutput: '1' }
+      ]
+    }
+  ],
+
   TypeScript: [
     {
       difficulty: 'easy',

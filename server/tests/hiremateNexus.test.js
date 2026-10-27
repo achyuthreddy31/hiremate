@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   PRACTICE_CATEGORIES,
   DIFFICULTY_MAP,
@@ -8,6 +8,8 @@ import {
   CURATED_CODING_CHALLENGES,
   CURATED_MCQ_BANK
 } from '../src/services/practice.service.js';
+import { revealQuestionSolution } from '../src/controllers/practice.controller.js';
+import { PracticeAttempt } from '../src/models/practiceAttempt.model.js';
 import {
   buildCompanyResearchDataset,
   COMPANY_HUB_SECTIONS
@@ -372,6 +374,26 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
       }
       expect(roadmap.tasks[0].day).toBe(1);
       expect(roadmap.tasks[roadmap.tasks.length - 1].day).toBe(7);
+    });
+
+    it('enforces SOLUTION_LOCKED if user has not submitted an attempt before requesting solution', async () => {
+      const req = {
+        params: { applicationId: 'app_test_lock', questionId: 'q_test_lock' },
+        user: { uid: 'user_test_lock' }
+      };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      };
+
+      vi.spyOn(PracticeAttempt, 'exists').mockResolvedValue(false);
+      await revealQuestionSolution(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: 'SOLUTION_LOCKED' })
+      }));
     });
   });
 });

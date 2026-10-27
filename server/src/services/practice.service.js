@@ -842,6 +842,7 @@ export async function generateTargetedPracticeQuestions({
         testCases: c.testCases || [],
         options: [],
         correctAnswer: c.referenceSolution || '',
+        referenceSolution: c.referenceSolution || '',
         explanation: `Coding challenge covering ${normSkill}.`,
         difficulty: c.difficulty || targetDiff,
         skill: normSkill,
@@ -861,6 +862,7 @@ export async function generateTargetedPracticeQuestions({
         options: [],
         starterCode: generated.starterCode || '',
         correctAnswer: generated.referenceSolution || '',
+        referenceSolution: generated.referenceSolution || '',
         expectedTimeSeconds: 120
       });
     }

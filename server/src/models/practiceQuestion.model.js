@@ -37,8 +37,13 @@ const practiceQuestionSchema = new mongoose.Schema({
   options: [{
     type: String
   }],
-  // Rule: correctAnswer is never sent to client before submission
+  // Rule: correctAnswer and referenceSolution are never sent to client before submission
   correctAnswer: {
+    type: String,
+    default: '',
+    select: false
+  },
+  referenceSolution: {
     type: String,
     default: '',
     select: false

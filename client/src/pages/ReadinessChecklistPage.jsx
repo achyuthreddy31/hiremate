@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -152,27 +152,43 @@ export default function ReadinessChecklistPage() {
                   <div
                     key={idx}
                     onClick={() => handleToggleChecklist(idx, item.status)}
-                    className={`p-4 rounded-xl border cursor-pointer flex items-start gap-3.5 transition-all shadow-sm ${
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        handleToggleChecklist(idx, item.status);
+                      }
+                    }}
+                    role="checkbox"
+                    aria-checked={isDone}
+                    tabIndex={0}
+                    className={`p-4 rounded-xl border cursor-pointer flex items-start gap-3.5 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
                       isDone
-                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/40 text-[var(--text-muted)]'
+                        ? 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-500/40'
                         : 'bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-slate-400'
                     }`}
                   >
                     <div
-                      className={`mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center border transition-all ${
-                        isDone ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-400'
+                      className={`mt-0.5 w-5 h-5 rounded-md shrink-0 flex items-center justify-center border-2 transition-colors ${
+                        isDone
+                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-indigo-500'
                       }`}
                     >
-                      {isDone && <CheckCircle2 size={13} />}
+                      {isDone && <CheckCircle2 size={13} className="text-white" />}
                     </div>
-                    <div className="text-xs space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold text-sm ${isDone ? 'line-through text-slate-400' : 'text-[var(--text-primary)]'}`}>
+                    <div className="text-xs space-y-1 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm text-[var(--text-primary)]">
                           {item.title}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] capitalize">
                           {item.priority}
                         </span>
+                        {isDone && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/60">
+                            Completed
+                          </span>
+                        )}
                       </div>
                       <div className="text-[var(--text-muted)] leading-relaxed">{item.reason}</div>
                     </div>
