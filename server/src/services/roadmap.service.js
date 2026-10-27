@@ -4,6 +4,10 @@ import { allocateRoadmapSlots } from './scoring/roadmapAllocation.js';
  * Builds complete preparation roadmap with deterministic time allocation.
  * Enforces rule: Every task MUST reference a requirementRef and a gapRef.
  * Strictly guarantees chronological order starting from Day 1 to final day.
+ * Structures daily learning activities into 3 sequential stages:
+ *   Stage 1 — Fundamentals & Concepts
+ *   Stage 2 — Guided Coding Practice
+ *   Stage 3 — Advanced Topics & Challenges
  */
 export function generateRoadmapPlan({
   userAvailableDays = 14,
@@ -31,35 +35,49 @@ export function generateRoadmapPlan({
     gaps
   });
 
-  // Enhance scheduled tasks with progressive learning activities & practice descriptions
+  // Enhance scheduled tasks with progressive 3-stage learning activities
   const tasksWithWording = allocation.scheduledTasks.map(task => {
     let title = task.title || `Master ${task.topic}`;
-    let learningActivity = `Read official documentation and architectural patterns for ${task.topic}.`;
-    let practiceActivity = `Build a hands-on proof-of-concept module and solve practice questions for ${task.topic}.`;
+    let learningObjectives = `Master fundamental concepts, execute guided implementations, and conquer advanced interview problems in ${task.topic}.`;
+    let stage1_fundamentals = `Stage 1 — Fundamentals & Concepts: Review core principles, mental models, runtime characteristics, and essential syntax for ${task.topic}.`;
+    let stage2_guidedPractice = `Stage 2 — Guided Coding Practice: Implement idiomatic coding patterns, build mini-modules, and complete structured problem-solving drills in ${task.topic}.`;
+    let stage3_advancedTopics = `Stage 3 — Advanced Topics & Challenges: Tackle complex edge cases, concurrency/memory trade-offs, performance optimization, and rigorous interview-level coding challenges for ${task.topic}.`;
 
     if (task.difficulty === 'easy') {
-      learningActivity = `Review foundational mechanics, key terminology, and syntax essentials for ${task.topic}.`;
-      practiceActivity = `Implement core code examples and complete introductory practice questions for ${task.topic}.`;
+      learningObjectives = `Establish rock-solid conceptual foundations and syntax fluency for ${task.topic}.`;
+      stage1_fundamentals = `Stage 1 — Fundamentals & Concepts: Study core terminology, execution flow, language primitives, and architecture standards for ${task.topic}.`;
+      stage2_guidedPractice = `Stage 2 — Guided Coding Practice: Write clean, self-contained implementation examples and verify output across baseline test cases for ${task.topic}.`;
+      stage3_advancedTopics = `Stage 3 — Advanced Topics & Challenges: Identify anti-patterns, resolve subtle logic traps, and solve introductory algorithm problems for ${task.topic}.`;
     } else if (task.difficulty === 'hard') {
-      learningActivity = `Deep-dive into concurrency trade-offs, system optimization, and edge cases in ${task.topic}.`;
-      practiceActivity = `Debug complex scenario items and execute performance optimization drills for ${task.topic}.`;
+      learningObjectives = `Deep-dive into high-performance architecture, distributed paradigms, and advanced edge cases in ${task.topic}.`;
+      stage1_fundamentals = `Stage 1 — Fundamentals & Concepts: Examine internal engine architectures, memory layout, lock contention, and protocol specifications for ${task.topic}.`;
+      stage2_guidedPractice = `Stage 2 — Guided Coding Practice: Architect scalable system components, implement robust error-handling boundaries, and run benchmarks for ${task.topic}.`;
+      stage3_advancedTopics = `Stage 3 — Advanced Topics & Challenges: Troubleshoot production outages, optimize algorithmic complexity (time & space), and defend trade-offs in ${task.topic}.`;
     }
 
     if (task.requirementRef === 'revision_comprehensive') {
       title = 'Comprehensive Revision & Note Review';
-      learningActivity = 'Review personal prep notes, key architectural trade-offs, and STAR stories.';
-      practiceActivity = 'Simulate self-quizzing across all target job requirements.';
+      learningObjectives = 'Consolidate key system architectures, algorithmic paradigms, and STAR interview stories across all completed domains.';
+      stage1_fundamentals = 'Stage 1 — Fundamentals & Concepts: Rapidly review comprehensive revision notes, core mechanics, and architectural cheat sheets.';
+      stage2_guidedPractice = 'Stage 2 — Guided Coding Practice: Run timed self-quizzing and write out solution blueprints for recurring technical questions.';
+      stage3_advancedTopics = 'Stage 3 — Advanced Topics & Challenges: Synthesize cross-cutting trade-offs, scalability bottlenecks, and behavioral STAR stories.';
     } else if (task.requirementRef === 'final_checklist_audit') {
       title = 'Final Target Job Readiness Audit';
-      learningActivity = 'Verify all checklist items, role details, and company research facts.';
-      practiceActivity = 'Complete final self-audit and interview logistics check.';
+      learningObjectives = 'Finalize interview logistics, role alignment, and technical confidence for target company evaluation.';
+      stage1_fundamentals = 'Stage 1 — Fundamentals & Concepts: Audit role requirements, job description nuances, and company research facts.';
+      stage2_guidedPractice = 'Stage 2 — Guided Coding Practice: Rehearse system walkthroughs and walk through your technical portfolio highlights.';
+      stage3_advancedTopics = 'Stage 3 — Advanced Topics & Challenges: Execute final checklist verification, interview environment setup, and logistics check.';
     }
 
     return {
       ...task,
       title,
-      learningActivity,
-      practiceActivity
+      learningObjectives,
+      stage1_fundamentals,
+      stage2_guidedPractice,
+      stage3_advancedTopics,
+      learningActivity: stage1_fundamentals,
+      practiceActivity: `${stage2_guidedPractice} Then ${stage3_advancedTopics}`
     };
   });
 

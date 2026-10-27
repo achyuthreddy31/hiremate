@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -12,7 +12,10 @@ import {
   BookOpen,
   ArrowRight,
   ExternalLink,
-  Target
+  Target,
+  Code2,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 export default function RoadmapPage() {
@@ -79,7 +82,7 @@ export default function RoadmapPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Dated Preparation Roadmap</h1>
             <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Time allocated proportionally across identified gaps with minimum 20-min slots. Final day reserved for comprehensive review.
+              Time allocated progressively across identified gaps. Each day structures 3 sequential stages: Fundamentals, Guided Practice, and Advanced Challenges.
             </p>
           </div>
           <button
@@ -164,7 +167,7 @@ export default function RoadmapPage() {
 
             {/* Tasks Tab View */}
             {activeTab === 'tasks' && (
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 {roadmap.tasks?.map((task) => {
                   const isCompleted = task.status === 'completed';
                   return (
@@ -172,14 +175,14 @@ export default function RoadmapPage() {
                       key={task._id}
                       className={`p-5 rounded-2xl border transition-all shadow-sm ${
                         isCompleted
-                          ? 'bg-slate-50 dark:bg-slate-900/40 border-emerald-500/30 opacity-75'
+                          ? 'bg-emerald-50/20 dark:bg-emerald-950/20 border-emerald-500/40'
                           : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-start gap-3.5">
                         <button
                           onClick={() => handleToggleTask(task)}
-                          className={`mt-1 w-5 h-5 rounded-lg flex items-center justify-center border transition-all active:scale-95 ${
+                          className={`mt-1 w-5 h-5 rounded-lg flex items-center justify-center border transition-all active:scale-95 shrink-0 ${
                             isCompleted
                               ? 'bg-emerald-600 border-emerald-600 text-white'
                               : 'border-slate-400 hover:border-indigo-600'
@@ -189,7 +192,7 @@ export default function RoadmapPage() {
                           {isCompleted && <CheckCircle2 size={13} />}
                         </button>
 
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
@@ -201,16 +204,66 @@ export default function RoadmapPage() {
                               <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] capitalize">
                                 Priority: {task.priority}
                               </span>
-                              <h4 className={`font-bold text-sm sm:text-base ${isCompleted ? 'line-through text-[var(--text-muted)]' : ''}`}>
+                              <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] capitalize">
+                                Level: {task.difficulty}
+                              </span>
+                              {isCompleted && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                  Completed
+                                </span>
+                              )}
+                              <h4 className="font-bold text-sm sm:text-base text-[var(--text-primary)]">
                                 {task.title}
                               </h4>
                             </div>
                           </div>
 
-                          <div className="p-3.5 rounded-xl bg-[var(--bg-primary)] text-xs space-y-1 leading-relaxed">
-                            <div><span className="font-bold text-[var(--text-primary)]">Learning Activity: </span>{task.learningActivity}</div>
-                            <div><span className="font-bold text-[var(--text-primary)]">Practice Activity: </span>{task.practiceActivity}</div>
-                            <div className="italic text-slate-500 dark:text-slate-400 mt-1">{task.reason}</div>
+                          {/* Learning Objective */}
+                          {task.learningObjectives && (
+                            <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                              <Sparkles size={13} className="shrink-0 text-indigo-500" />
+                              <span><strong className="font-bold text-indigo-900 dark:text-indigo-200">Objective:</strong> {task.learningObjectives}</span>
+                            </div>
+                          )}
+
+                          {/* 3 Sequential Stages - Unified, Professional Design System */}
+                          <div className="space-y-2.5 pt-1">
+                            {/* Stage 1: Fundamentals & Concepts */}
+                            <div className="p-3.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1.5">
+                              <div className="flex items-center gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-wider">
+                                <BookOpen size={14} className="text-indigo-500 shrink-0" />
+                                <span>Stage 1 — Fundamentals & Concepts</span>
+                              </div>
+                              <p className="text-[var(--text-primary)] leading-relaxed pl-5 font-normal text-xs">
+                                {task.stage1_fundamentals || task.learningActivity}
+                              </p>
+                            </div>
+
+                            {/* Stage 2: Guided Coding Practice */}
+                            <div className="p-3.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1.5">
+                              <div className="flex items-center gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-wider">
+                                <Code2 size={14} className="text-indigo-500 shrink-0" />
+                                <span>Stage 2 — Guided Coding Practice</span>
+                              </div>
+                              <p className="text-[var(--text-primary)] leading-relaxed pl-5 font-normal text-xs">
+                                {task.stage2_guidedPractice || task.practiceActivity}
+                              </p>
+                            </div>
+
+                            {/* Stage 3: Advanced Topics & Challenges */}
+                            <div className="p-3.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1.5">
+                              <div className="flex items-center gap-2 font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-wider">
+                                <Target size={14} className="text-indigo-500 shrink-0" />
+                                <span>Stage 3 — Advanced Topics & Challenges</span>
+                              </div>
+                              <p className="text-[var(--text-primary)] leading-relaxed pl-5 font-normal text-xs">
+                                {task.stage3_advancedTopics || 'Analyze edge cases, concurrency pitfalls, and execute rigorous interview-level coding challenges.'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="italic text-slate-500 dark:text-slate-400 text-[11px] pt-1">
+                            {task.reason}
                           </div>
                         </div>
                       </div>

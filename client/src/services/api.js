@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import { auth } from './firebase';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
@@ -35,6 +35,11 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    // If rate-limited (429), return standardized single clear message
+    if (error.response?.status === 429) {
+      const rateLimitMsg = error.response?.data?.error?.message || 'Too many requests. Please try again later.';
+      return Promise.reject(new Error(rateLimitMsg));
+    }
     const message = error.response?.data?.error?.message || error.message || 'Request failed';
     return Promise.reject(new Error(message));
   }

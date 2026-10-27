@@ -127,10 +127,11 @@ export async function generatePracticeQuestions(req, res) {
       { $set: { testSessionId: sessionId, served: true, servedAt: new Date() } }
     );
 
-    // Return client-safe questions without correctAnswer
+    // Return client-safe questions without correctAnswer or referenceSolution
     const clientSafe = selected.map(q => {
       const obj = typeof q.toObject === 'function' ? q.toObject() : { ...q };
       delete obj.correctAnswer;
+      delete obj.referenceSolution;
       return obj;
     });
 
@@ -305,6 +306,38 @@ export async function getTopicPerformance(req, res) {
     return res.status(500).json({
       success: false,
       error: { code: 'PERFORMANCE_FETCH_ERROR', message: error.message }
+    });
+  }
+}
+
+export async function revealQuestionSolution(req, res) {
+  try {
+    const { applicationId, questionId } = req.params;
+
+    const question = await PracticeQuestion.findOne({
+      _id: questionId,
+      applicationId,
+      firebaseUid: req.user.uid
+    }).select('+correctAnswer');
+
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'QUESTION_NOT_FOUND', message: 'Question not found or unauthorized' }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        solution: question.correctAnswer || '',
+        explanation: question.explanation || ''
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: { code: 'REVEAL_ERROR', message: error.message }
     });
   }
 }

@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const roadmapSchema = new mongoose.Schema({
   firebaseUid: {
@@ -33,6 +33,10 @@ const roadmapSchema = new mongoose.Schema({
     reason: { type: String, required: true },
     learningActivity: { type: String, default: '' },
     practiceActivity: { type: String, default: '' },
+    learningObjectives: { type: String, default: '' },
+    stage1_fundamentals: { type: String, default: '' },
+    stage2_guidedPractice: { type: String, default: '' },
+    stage3_advancedTopics: { type: String, default: '' },
     estimatedMinutes: { type: Number, default: 30 },
     priority: { type: String, enum: ['critical', 'important', 'beneficial'], default: 'important' },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },

@@ -110,7 +110,7 @@ export default function DashboardPage() {
             {applications.map((app) => (
               <div
                 key={app._id}
-                className="group relative p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-all flex flex-col justify-between shadow-sm hover:shadow-md"
+                className="group relative p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-indigo-500/50 transition-colors flex flex-col justify-between min-h-[208px] shadow-sm hover:shadow-md"
               >
                 <div>
                   <div className="flex justify-between items-start gap-2">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -28,9 +28,18 @@ export default function ApplicationDashboardPage() {
   const [workflowStatus, setWorkflowStatus] = useState(null);
   const [polling, setPolling] = useState(false);
 
+  const pollIntervalRef = useRef(null);
+
   useEffect(() => {
     fetchOverview();
     checkWorkflowStatus();
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
   }, [applicationId]);
 
   const fetchOverview = async () => {
@@ -57,21 +66,31 @@ export default function ApplicationDashboardPage() {
   };
 
   const startPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
     setPolling(true);
-    const interval = setInterval(async () => {
+    pollIntervalRef.current = setInterval(async () => {
       try {
         const res = await apiClient.get(`/workflow/status/${applicationId}`);
         setWorkflowStatus(res.data);
         if (res.data?.status === 'completed' || res.data?.status === 'failed') {
-          clearInterval(interval);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
           setPolling(false);
           fetchOverview();
         }
       } catch (err) {
-        clearInterval(interval);
+        // Stop polling on rate limit or failure to avoid hammering server
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
         setPolling(false);
       }
-    }, 2000);
+    }, 3500);
   };
 
   const handleStartWorkflow = async () => {
@@ -85,18 +104,31 @@ export default function ApplicationDashboardPage() {
     }
   };
 
+  const app = data?.application;
+
   if (loading) {
     return (
-      <AppLayout>
-        <div className="h-64 flex flex-col items-center justify-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <span className="text-xs text-[var(--text-muted)]">Loading preparation overview...</span>
+      <AppLayout currentApplication={app}>
+        <div className="space-y-6 animate-pulse">
+          {/* Top Header Card Skeleton */}
+          <div className="h-40 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 border border-[var(--border-subtle)]" />
+          
+          {/* KPI Dual Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="h-48 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 border border-[var(--border-subtle)]" />
+            <div className="h-48 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 border border-[var(--border-subtle)]" />
+          </div>
+
+          {/* Quick Nav Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-32 rounded-xl bg-slate-200/50 dark:bg-slate-800/30 border border-[var(--border-subtle)]" />
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
   }
-
-  const app = data?.application;
 
   if (error || !app) {
     return (
@@ -269,7 +301,6 @@ export default function ApplicationDashboardPage() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <h3 className="font-extrabold text-base sm:text-lg">Structured Preparation Flow</h3>
-            
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -279,7 +310,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <Briefcase size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Target Job & Alignment</div>
@@ -297,7 +327,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <FileText size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Resume & Quality Check</div>
@@ -315,7 +344,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <Clock size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Preparation Roadmap</div>
@@ -333,7 +361,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <Cpu size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Practice & Auto-Graded Coding</div>
@@ -351,7 +378,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <BookOpen size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Company Research Hub</div>
@@ -369,7 +395,6 @@ export default function ApplicationDashboardPage() {
             >
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  
                   <CheckCircle size={15} className="text-indigo-500" />
                 </div>
                 <div className="font-bold text-sm group-hover:text-indigo-600 transition-colors">Readiness & Final Checklist</div>

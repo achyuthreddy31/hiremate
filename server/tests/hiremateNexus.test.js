@@ -4,13 +4,16 @@ import {
   DIFFICULTY_MAP,
   generateTargetedPracticeQuestions,
   evaluateCodingSolution,
-  validateQuestionFormat
+  validateQuestionFormat,
+  CURATED_CODING_CHALLENGES,
+  CURATED_MCQ_BANK
 } from '../src/services/practice.service.js';
 import {
   buildCompanyResearchDataset,
   COMPANY_HUB_SECTIONS
 } from '../src/services/companyResearch.service.js';
 import { buildInterviewPrepDataset } from '../src/services/interviewPrep.service.js';
+import { generateRoadmapPlan } from '../src/services/roadmap.service.js';
 
 describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
   describe('Practice & Coding Dynamic Selection', () => {
@@ -272,6 +275,103 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
 
       // Verify stage checklists
       expect(prep.stageChecklists.length).toBe(4);
+    });
+  });
+
+  describe('Practice, Coding Challenges & Roadmap Specific Fixes', () => {
+    it('does not reveal solutions upfront for coding challenges and keeps reference solution separate', async () => {
+      // Check curated coding challenges
+      for (const [skill, challenges] of Object.entries(CURATED_CODING_CHALLENGES)) {
+        for (const c of challenges) {
+          expect(c.starterCode).toBeDefined();
+          expect(c.referenceSolution).toBeDefined();
+          // Starter code should not contain the working solution logic
+          if (c.referenceSolution.includes('return') && !c.starterCode.includes('pass')) {
+            // starterCode must not be identical to reference solution
+            expect(c.starterCode.trim()).not.toBe(c.referenceSolution.trim());
+          }
+        }
+      }
+
+      // Test generating coding challenge questions
+      const challenges = await generateTargetedPracticeQuestions({
+        applicationId: 'mock_sec_app',
+        firebaseUid: 'mock_sec_user',
+        category: 'Programming Languages',
+        skill: 'JavaScript',
+        difficulty: 'medium',
+        count: 3,
+        mode: 'coding_challenges'
+      });
+
+      expect(challenges.length).toBe(3);
+      for (const ch of challenges) {
+        expect(ch.starterCode).toBeDefined();
+        // Starter code must not contain full working implementations
+        expect(ch.starterCode).toContain('Write your solution here');
+      }
+    });
+
+    it('returns exactly 5 questions when 5 questions are selected for any programming language or skill', async () => {
+      const testSkills = ['C', 'C++', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Python', 'JavaScript', 'React', 'Node.js'];
+
+      for (const skill of testSkills) {
+        // Verify curated bank has at least 15 questions for the skill
+        expect(CURATED_MCQ_BANK[skill]).toBeDefined();
+        expect(CURATED_MCQ_BANK[skill].length).toBeGreaterThanOrEqual(15);
+
+        // Verify generating 5 questions returns exactly 5
+        const questions = await generateTargetedPracticeQuestions({
+          applicationId: `mock_app_count_${skill}`,
+          firebaseUid: 'mock_user_count',
+          category: 'Programming Languages',
+          skill,
+          difficulty: 'medium',
+          count: 5,
+          mode: 'mcq'
+        });
+
+        expect(questions.length).toBe(5);
+
+        // Verify distinct question texts
+        const questionTexts = new Set(questions.map(q => q.question));
+        expect(questionTexts.size).toBe(5);
+      }
+    });
+
+    it('generates roadmap with progressive 3-stage daily structure in chronological order', () => {
+      const roadmap = generateRoadmapPlan({
+        userAvailableDays: 7,
+        dailyPreparationMinutes: 60,
+        requirementsResults: [
+          { requirementRef: 'req_python', name: 'Python', importance: 'critical', score: 20 },
+          { requirementRef: 'req_dsa', name: 'Data Structures & Algorithms', importance: 'critical', score: 30 },
+          { requirementRef: 'req_sql', name: 'SQL', importance: 'important', score: 40 }
+        ]
+      });
+
+      expect(roadmap.totalDays).toBe(7);
+      expect(roadmap.tasks.length).toBeGreaterThanOrEqual(7);
+
+      // Verify each task has 3 stages and learning objectives
+      for (const task of roadmap.tasks) {
+        expect(task.learningObjectives).toBeTruthy();
+        expect(task.stage1_fundamentals).toBeTruthy();
+        expect(task.stage2_guidedPractice).toBeTruthy();
+        expect(task.stage3_advancedTopics).toBeTruthy();
+
+        // Stage labels must follow sequential structure
+        expect(task.stage1_fundamentals).toContain('Stage 1 — Fundamentals & Concepts');
+        expect(task.stage2_guidedPractice).toContain('Stage 2 — Guided Coding Practice');
+        expect(task.stage3_advancedTopics).toContain('Stage 3 — Advanced Topics & Challenges');
+      }
+
+      // Verify tasks are ordered strictly chronologically from Day 1 to Day N
+      for (let i = 0; i < roadmap.tasks.length - 1; i++) {
+        expect(roadmap.tasks[i].day).toBeLessThanOrEqual(roadmap.tasks[i + 1].day);
+      }
+      expect(roadmap.tasks[0].day).toBe(1);
+      expect(roadmap.tasks[roadmap.tasks.length - 1].day).toBe(7);
     });
   });
 });

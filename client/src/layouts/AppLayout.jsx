@@ -23,6 +23,9 @@ import {
   User
 } from 'lucide-react';
 
+// In-memory cache for target application data to prevent flashes and duplicate fetches on route navigation
+const appMetadataCache = new Map();
+
 export default function AppLayout({ children, currentApplication }) {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -31,18 +34,42 @@ export default function AppLayout({ children, currentApplication }) {
   const params = useParams();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeApp, setActiveApp] = useState(currentApplication || null);
 
   const routeAppId = params.applicationId;
+
+  // Initialize activeApp immediately from props or cache to prevent layout shift during navigation
+  const [activeApp, setActiveApp] = useState(() => {
+    if (currentApplication && currentApplication._id) {
+      appMetadataCache.set(String(currentApplication._id), currentApplication);
+      return currentApplication;
+    }
+    if (routeAppId && appMetadataCache.has(String(routeAppId))) {
+      return appMetadataCache.get(String(routeAppId));
+    }
+    return null;
+  });
+
   const activeAppId = activeApp?._id || routeAppId;
 
   useEffect(() => {
-    if (currentApplication) {
+    if (currentApplication && currentApplication._id) {
+      appMetadataCache.set(String(currentApplication._id), currentApplication);
       setActiveApp(currentApplication);
-    } else if (routeAppId && !activeApp) {
-      apiClient.get(`/applications/${routeAppId}`)
-        .then(res => setActiveApp(res.data))
-        .catch(() => {});
+    } else if (routeAppId) {
+      if (appMetadataCache.has(String(routeAppId))) {
+        setActiveApp(appMetadataCache.get(String(routeAppId)));
+      } else {
+        apiClient.get(`/applications/${routeAppId}`)
+          .then(res => {
+            if (res.data) {
+              appMetadataCache.set(String(routeAppId), res.data);
+              setActiveApp(res.data);
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      setActiveApp(null);
     }
   }, [currentApplication, routeAppId]);
 
@@ -74,7 +101,8 @@ export default function AppLayout({ children, currentApplication }) {
             HireMate Nexus
           </span>
         </Link>
-        <div className="flex items-center gap-2 shrink-0">
+
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
@@ -92,11 +120,11 @@ export default function AppLayout({ children, currentApplication }) {
         </div>
       </header>
 
-      {/* Sidebar */}
+      {/* Sidebar - Fixed width & stable layout to eliminate shaking on navigation */}
       <aside
         className={`${
           mobileMenuOpen ? 'block' : 'hidden'
-        } md:flex w-full md:w-[270px] bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col justify-between p-4 fixed md:sticky top-0 h-auto md:h-screen z-20 overflow-y-auto`}
+        } md:flex w-full md:w-[270px] shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex-col justify-between p-4 fixed md:sticky top-0 h-auto md:h-screen z-20 overflow-y-auto`}
       >
         <div>
           {/* Desktop Logo Header - Single line guarantee */}
@@ -119,43 +147,45 @@ export default function AppLayout({ children, currentApplication }) {
             </button>
           </div>
 
-          {/* Current Target Application Widget */}
-          {activeApp ? (
-            <div className="mb-4 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 relative overflow-hidden">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                  Target Application
-                </span>
-                <Link
-                  to="/dashboard"
-                  className="text-[11px] text-indigo-500 hover:underline flex items-center gap-0.5"
-                  title="Switch Target Application"
-                >
-                  Switch
-                </Link>
-              </div>
-              <div className="font-semibold text-sm truncate" title={activeApp.companyName}>
-                {activeApp.companyName}
-              </div>
-              <div className="text-xs text-[var(--text-muted)] truncate" title={activeApp.jobTitle}>
-                {activeApp.jobTitle}
-              </div>
-            </div>
-          ) : (
-            <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-[var(--border-subtle)]">
-              <div className="text-[11px] font-medium text-[var(--text-muted)] flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Layers size={13} className="text-indigo-500" />
-                  <span>All Applications</span>
+          {/* Current Target Application Widget - Fixed min-height avoids shifting navigation links */}
+          <div className="mb-4 min-h-[74px] flex flex-col justify-center">
+            {activeApp ? (
+              <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    Target Application
+                  </span>
+                  <Link
+                    to="/dashboard"
+                    className="text-[11px] text-indigo-500 hover:underline flex items-center gap-0.5"
+                    title="Switch Target Application"
+                  >
+                    Switch
+                  </Link>
                 </div>
-                <Link to="/applications/new" className="text-[10px] text-indigo-600 hover:underline font-bold">
-                  + Add
-                </Link>
+                <div className="font-semibold text-sm truncate" title={activeApp.companyName}>
+                  {activeApp.companyName}
+                </div>
+                <div className="text-xs text-[var(--text-muted)] truncate" title={activeApp.jobTitle}>
+                  {activeApp.jobTitle}
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-[var(--border-subtle)]">
+                <div className="text-[11px] font-medium text-[var(--text-muted)] flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Layers size={13} className="text-indigo-500" />
+                    <span>All Applications</span>
+                  </div>
+                  <Link to="/applications/new" className="text-[10px] text-indigo-600 hover:underline font-bold">
+                    + Add
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links - transition-colors avoids layout re-flows */}
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -165,7 +195,7 @@ export default function AppLayout({ children, currentApplication }) {
                   key={item.label}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${
                     isActive
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-[var(--text-primary)]'
@@ -221,7 +251,7 @@ export default function AppLayout({ children, currentApplication }) {
       </aside>
 
       {/* Main Content Viewport */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full min-h-screen">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full min-h-[calc(100vh-4rem)] md:min-h-screen">
         {children}
       </main>
     </div>

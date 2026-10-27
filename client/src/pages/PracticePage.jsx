@@ -17,7 +17,9 @@ import {
   Search,
   Check,
   Play,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  Key
 } from 'lucide-react';
 
 const CATEGORIES_DATA = {
@@ -81,6 +83,8 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [revealedSolution, setRevealedSolution] = useState(null);
   const [error, setError] = useState('');
   const [isExhausted, setIsExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState('practice'); // 'practice' | 'performance'
@@ -107,6 +111,7 @@ export default function PracticePage() {
     const available = CATEGORIES_DATA[newCat] || [];
     setSelectedSkill(available[0] || '');
     setSkillSearch('');
+    setRevealedSolution(null);
   };
 
   const fetchPracticeData = async () => {
@@ -121,6 +126,7 @@ export default function PracticePage() {
       setQuestions(fetchedQuestions);
       setIsExhausted(!!qRes.exhausted && fetchedQuestions.length === 0);
       setPerformance(perfRes.data || []);
+      setRevealedSolution(null);
 
       if (fetchedQuestions.length > 0) {
         setCodeAnswer(fetchedQuestions[0].starterCode || '');
@@ -137,6 +143,7 @@ export default function PracticePage() {
     setError('');
     setIsSessionComplete(false);
     setSessionHistory([]);
+    setRevealedSolution(null);
     try {
       const payload = {
         category: selectedCategory,
@@ -171,6 +178,22 @@ export default function PracticePage() {
 
   const currentQ = questions[currentIndex];
 
+  const handleRevealSolution = async () => {
+    if (!currentQ?._id || revealing) return;
+    setRevealing(true);
+    setError('');
+    try {
+      const res = await apiClient.post(`/practice/reveal-solution/${applicationId}/${currentQ._id}`);
+      if (res.data) {
+        setRevealedSolution(res.data);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to reveal reference solution');
+    } finally {
+      setRevealing(false);
+    }
+  };
+
   const handleSubmitAnswer = async () => {
     const answerToSubmit = currentQ?.mode === 'coding_challenges' || currentQ?.type === 'code_writing'
       ? codeAnswer
@@ -204,11 +227,6 @@ export default function PracticePage() {
 
       // Refresh adaptive performance stats in background
       apiClient.get(`/practice/performance/${applicationId}`).then(p => setPerformance(p.data || []));
-
-      // If this was the last question in the session, mark session complete
-      if (currentIndex === questions.length - 1) {
-        // Session complete state will trigger when the user clicks "View Session Summary" or we can show completion
-      }
     } catch (err) {
       setError(err.message || 'Submission failed');
     } finally {
@@ -222,6 +240,7 @@ export default function PracticePage() {
       setCurrentIndex(nextIdx);
       setSelectedAnswer('');
       setSubmissionResult(null);
+      setRevealedSolution(null);
       setCodeAnswer(questions[nextIdx]?.starterCode || '');
     } else {
       // Completed all questions in the session
@@ -300,7 +319,10 @@ export default function PracticePage() {
               </label>
               <select
                 value={selectedSkill}
-                onChange={(e) => setSelectedSkill(e.target.value)}
+                onChange={(e) => {
+                  setSelectedSkill(e.target.value);
+                  setRevealedSolution(null);
+                }}
                 className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
               >
                 {filteredSkills.map(sk => (
@@ -342,7 +364,10 @@ export default function PracticePage() {
               <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Practice Mode</label>
               <select
                 value={selectedMode}
-                onChange={(e) => setSelectedMode(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMode(e.target.value);
+                  setRevealedSolution(null);
+                }}
                 className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
               >
                 {MODE_OPTIONS.map(m => (
@@ -350,6 +375,17 @@ export default function PracticePage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              onClick={() => handleStartSession(false)}
+              disabled={generating}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+            >
+              <Play size={14} className={generating ? "animate-spin" : ""} />
+              <span>{generating ? 'Configuring Session...' : `Start ${selectedSkill} (${selectedCount} Qs)`}</span>
+            </button>
           </div>
         </div>
 
@@ -558,6 +594,28 @@ export default function PracticePage() {
                         className="w-full p-4 rounded-xl font-mono text-xs bg-slate-950 text-slate-100 border border-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed disabled:opacity-80"
                       />
                     </div>
+
+                    {/* Revealed Reference Solution Card (Does not overwrite editor code) */}
+                    {revealedSolution && (
+                      <div className="p-4 rounded-xl bg-slate-900 border border-indigo-500/40 text-slate-100 space-y-2.5 mt-3 shadow-md">
+                        <div className="flex items-center justify-between text-xs font-bold text-indigo-400 border-b border-slate-800 pb-2">
+                          <span className="flex items-center gap-1.5">
+                            <Key size={14} className="text-indigo-400" />
+                            Official Reference Solution ({currentQ.skill})
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-normal">Reference Only (Your editor code is preserved)</span>
+                        </div>
+                        <pre className="p-3.5 rounded-lg bg-slate-950 font-mono text-xs overflow-x-auto text-emerald-400 leading-relaxed border border-slate-800">
+                          {revealedSolution.solution}
+                        </pre>
+                        {revealedSolution.explanation && (
+                          <div className="text-xs text-slate-300 leading-relaxed pt-1">
+                            <span className="font-bold text-slate-200">Approach & Complexity: </span>
+                            {revealedSolution.explanation}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* MODE: MCQ */
@@ -599,9 +657,22 @@ export default function PracticePage() {
                   </div>
                 )}
 
-                {/* Submit / Action Button */}
+                {/* Submit / Action Buttons */}
                 {!submissionResult ? (
-                  <div className="pt-3 flex justify-end">
+                  <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
+                    {(currentQ.mode === 'coding_challenges' || currentQ.type === 'code_writing') ? (
+                      <button
+                        onClick={handleRevealSolution}
+                        disabled={revealing || !!revealedSolution}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-all disabled:opacity-50"
+                      >
+                        <Eye size={14} className={revealing ? "animate-spin" : ""} />
+                        <span>{revealing ? 'Fetching Solution...' : (revealedSolution ? 'Reference Solution Displayed' : 'Show Solution')}</span>
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
                     <button
                       onClick={handleSubmitAnswer}
                       disabled={
@@ -631,7 +702,6 @@ export default function PracticePage() {
                         <XCircle size={20} className="shrink-0 text-rose-600 mt-0.5" />
                       )}
                       <div className="text-xs space-y-1.5 flex-1">
-                        {/* Requirement 2.3: Exact Feedback String for Correct Answers */}
                         <div className="font-extrabold text-sm sm:text-base">
                           {submissionResult.isCorrect ? 'Well done! Keep going.' : 'Incorrect'}
                         </div>
