@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,13 +17,21 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (!name.trim()) {
+      return setError('Please enter your full name');
+    }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
+    if (password.length < 6) {
+      return setError('Password must be at least 6 characters');
+    }
+
     setLoading(true);
     try {
-      await register(email, password);
+      await register(name.trim(), email.trim(), password, confirmPassword);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Failed to create account');
@@ -49,6 +58,18 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Full Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alex Morgan"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Email</label>
             <input

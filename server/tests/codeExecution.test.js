@@ -164,7 +164,7 @@ describe('Multi-Language Code Execution Engine - Security & Reliability', () => 
         function checkEnv() {
           return {
             hasMongo: Boolean(process.env.MONGODB_URI),
-            hasFirebase: Boolean(process.env.FIREBASE_PROJECT_ID),
+            hasJwt: Boolean(process.env.JWT_SECRET),
             hasGemini: Boolean(process.env.GEMINI_API_KEY)
           };
         }
@@ -172,7 +172,7 @@ describe('Multi-Language Code Execution Engine - Security & Reliability', () => 
       const testCases = [
         {
           input: '{}',
-          expectedOutput: JSON.stringify({ hasMongo: false, hasFirebase: false, hasGemini: false })
+          expectedOutput: JSON.stringify({ hasMongo: false, hasJwt: false, hasGemini: false })
         }
       ];
 

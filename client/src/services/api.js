@@ -1,50 +1,39 @@
 import axios from 'axios';
-import { auth } from './firebase';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Helper to wait until Firebase restores the auth session
-const getCurrentUserToken = () => {
-  return new Promise((resolve) => {
-    // If the session is already active, return the token immediately
-    if (auth.currentUser) {
-      auth.currentUser.getIdToken().then(resolve).catch(() => resolve(null));
-      return;
-    }
-
-    // Otherwise, wait for Firebase to restore state from IndexedDB
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      unsubscribe();
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          resolve(token);
-        } catch {
-          resolve(null);
-        }
-      } else {
-        resolve(null);
-      }
-    });
-  });
-};
-
-// Interceptor to attach Firebase ID Token to every outgoing request
-apiClient.interceptors.request.use(async (config) => {
+// Interceptor to attach MongoDB JWT Token to every outgoing request
+apiClient.interceptors.request.use((config) => {
   try {
-    const token = await getCurrentUserToken();
+    const token = localStorage.getItem('hiremate_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (err) {
-    console.warn('Error obtaining auth token:', err);
+    console.warn('Error obtaining auth token from storage:', err);
   }
   return config;
 });
+
+// Response interceptor to format errors and handle expired sessions
+apiClient.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear expired or invalid token
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        localStorage.removeItem('hiremate_token');
+      }
+    }
+    const message = error.response?.data?.error?.message || error.message || 'Request failed';
+    return Promise.reject(new Error(message));
+  }
+);

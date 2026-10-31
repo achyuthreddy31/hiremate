@@ -1,4 +1,4 @@
-﻿import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
@@ -14,9 +14,8 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('5000'),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://localhost:27017/hiremate_ai'),
-  FIREBASE_PROJECT_ID: z.string().default('mock-project'),
-  FIREBASE_CLIENT_EMAIL: z.string().default('mock-email@example.com'),
-  FIREBASE_PRIVATE_KEY: z.string().default('mock-private-key'),
+  JWT_SECRET: z.string().default('hiremate-nexus-secure-jwt-secret-key-32chars-min'),
+  JWT_EXPIRES_IN: z.string().default('7d'),
   GEMINI_API_KEY: z.string().default('mock-gemini-key'),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   MAX_FILE_SIZE: z.string().transform(Number).default('5242880')

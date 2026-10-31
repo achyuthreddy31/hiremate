@@ -1,17 +1,27 @@
-import admin, { initializeFirebase } from '../config/firebase.js';
-
-initializeFirebase();
+import { verifyToken } from '../utils/token.js';
 
 /**
  * Authentication middleware.
- * Verifies Firebase ID token from Authorization header (Bearer <token>).
- * Strictly populates req.user.uid with the verified UID.
- * Supports mock development tokens formatted as "mock-uid-<uid>" for offline testing.
+ * Verifies JWT token from Authorization header (Bearer <token>) or HttpOnly cookie.
+ * Populates req.user with { id, uid, email, name }.
  */
 export async function requireAuth(req, res, next) {
   try {
+    let token = null;
+
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split('Bearer ')[1].trim();
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    } else if (req.headers.cookie) {
+      const match = req.headers.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+      if (match) {
+        token = decodeURIComponent(match[1]);
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         error: {
@@ -21,66 +31,32 @@ export async function requireAuth(req, res, next) {
       });
     }
 
-    const token = authHeader.split('Bearer ')[1].trim();
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Bearer token string is empty'
-        }
-      });
-    }
-
-    // Restrict mock authentication strictly to explicit development and test environments.
-    // Missing, undefined, empty, or unrecognized environments fail closed and reject mock tokens.
-    const isMockToken = token.startsWith('mock-token-') || token.startsWith('mock-uid-');
-    if (isMockToken) {
-      const currentEnv = typeof process.env.NODE_ENV === 'string' ? process.env.NODE_ENV.trim().toLowerCase() : '';
-      const isAllowedEnvironment = currentEnv === 'development' || currentEnv === 'test';
-
-      if (!isAllowedEnvironment) {
-        return res.status(401).json({
-          success: false,
-          error: {
-            code: 'INVALID_TOKEN',
-            message: currentEnv === 'production'
-              ? 'Mock authentication tokens are not permitted in production environments.'
-              : 'Mock authentication tokens are permitted only in development and test environments.'
-          }
-        });
-      }
-      const mockUid = token.replace('mock-token-', '').replace('mock-uid-', '').trim();
-      req.user = {
-        uid: mockUid || 'mock_user_123',
-        email: `${mockUid || 'mock'}@hiremate.ai`
-      };
-      return next();
-    }
-
-    // Verify live Firebase ID token
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      if (!decodedToken || !decodedToken.uid) {
+      const decoded = verifyToken(token);
+      if (!decoded || (!decoded.uid && !decoded.id)) {
         return res.status(401).json({
           success: false,
           error: {
             code: 'INVALID_TOKEN',
-            message: 'Firebase token verification returned invalid identity payload'
+            message: 'Authentication token verification returned invalid identity payload'
           }
         });
       }
+
       req.user = {
-        uid: decodedToken.uid,
-        email: decodedToken.email
+        id: decoded.id || decoded.uid,
+        uid: decoded.uid || decoded.id,
+        email: decoded.email,
+        name: decoded.name
       };
+
       return next();
     } catch (verifyError) {
       return res.status(401).json({
         success: false,
         error: {
           code: 'INVALID_TOKEN',
-          message: 'Firebase token verification failed or expired: ' + verifyError.message
+          message: 'Authentication token verification failed or expired: ' + verifyError.message
         }
       });
     }

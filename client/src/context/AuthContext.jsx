@@ -1,12 +1,5 @@
-﻿import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  auth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  onAuthStateChanged
-} from '../services/firebase';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { apiClient } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -14,69 +7,100 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
- useEffect(() => {
-    if (import.meta.env.DEV) {
-      const mockUid = localStorage.getItem('hiremate_mock_uid');
-      if (mockUid && !currentUser) {
-        setCurrentUser({
-          uid: mockUid,
-          email: `${mockUid}@hiremate.ai`,
-          displayName: 'Test Candidate'
-        });
-        setLoading(false);
+  // Restore session from MongoDB backend on initial load / refresh
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      const token = localStorage.getItem('hiremate_token');
+      if (!token) {
+        if (isMounted) {
+          setCurrentUser(null);
+          setLoading(false);
+        }
         return;
       }
-    }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-    });
+      try {
+        const res = await apiClient.get('/auth/me');
+        if (res.data?.user && isMounted) {
+          const u = res.data.user;
+          setCurrentUser({
+            ...u,
+            displayName: u.name || (u.email ? u.email.split('@')[0] : 'Candidate')
+          });
+        }
+      } catch (err) {
+        console.warn('Session verification failed, logging out:', err.message);
+        localStorage.removeItem('hiremate_token');
+        if (isMounted) {
+          setCurrentUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
 
-    return () => unsubscribe();
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (email, password) => {
-    try {
-      const res = await signInWithEmailAndPassword(auth, email, password);
-      return res.user;
-    } catch (err) {
-      // In local dev without live Firebase keys, allow mock demo login
-      if (email && password) {
-        const mockUid = email.split('@')[0] || 'demo_user';
-        localStorage.setItem('hiremate_mock_uid', mockUid);
-        const user = { uid: mockUid, email, displayName: mockUid };
-        setCurrentUser(user);
-        return user;
-      }
-      throw err;
+    const res = await apiClient.post('/auth/login', { email, password });
+    const { token, user } = res.data;
+    if (token) {
+      localStorage.setItem('hiremate_token', token);
     }
+    const normalizedUser = {
+      ...user,
+      displayName: user.name || (user.email ? user.email.split('@')[0] : 'Candidate')
+    };
+    setCurrentUser(normalizedUser);
+    return normalizedUser;
   };
 
-  const register = async (email, password) => {
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      return res.user;
-    } catch (err) {
-      // Demo mock fallback
-      const mockUid = email.split('@')[0] || 'demo_user';
-      localStorage.setItem('hiremate_mock_uid', mockUid);
-      const user = { uid: mockUid, email, displayName: mockUid };
-      setCurrentUser(user);
-      return user;
+  const register = async (name, email, password, confirmPassword) => {
+    const res = await apiClient.post('/auth/register', {
+      name,
+      email,
+      password,
+      confirmPassword: confirmPassword || password
+    });
+    const { token, user } = res.data;
+    if (token) {
+      localStorage.setItem('hiremate_token', token);
     }
+    const normalizedUser = {
+      ...user,
+      displayName: user.name || (user.email ? user.email.split('@')[0] : 'Candidate')
+    };
+    setCurrentUser(normalizedUser);
+    return normalizedUser;
   };
 
   const logout = async () => {
-    localStorage.removeItem('hiremate_mock_uid');
     try {
-      await signOut(auth);
-    } catch (e) {}
-    setCurrentUser(null);
+      await apiClient.post('/auth/logout');
+    } catch (e) {
+      // Ignore network errors during logout
+    } finally {
+      localStorage.removeItem('hiremate_token');
+      setCurrentUser(null);
+    }
   };
 
-  const resetPassword = (email) => {
-    return sendPasswordResetEmail(auth, email);
+  const resetPassword = async (email, password, confirmPassword) => {
+    const res = await apiClient.post('/auth/reset-password', {
+      email,
+      password,
+      confirmPassword
+    });
+    return res.data;
   };
 
   return (

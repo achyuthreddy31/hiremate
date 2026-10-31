@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
   firebaseUid: {
     type: String,
-    required: true,
-    unique: true,
+    sparse: true,
     index: true
   },
   name: {
@@ -15,8 +15,14 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
+    unique: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    index: true
+  },
+  password: {
+    type: String,
+    select: false
   },
   education: [{
     institution: String,
@@ -75,6 +81,34 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+userSchema.pre('save', async function (next) {
+  if (!this.firebaseUid) {
+    this.firebaseUid = this._id ? this._id.toString() : new mongoose.Types.ObjectId().toString();
+  }
+  if (!this.isModified('password') || !this.password) {
+    return next();
+  }
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.password;
+    return ret;
+  }
 });
 
 export const User = mongoose.model('User', userSchema);

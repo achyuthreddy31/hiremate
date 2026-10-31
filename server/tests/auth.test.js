@@ -1,84 +1,14 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import admin from '../src/config/firebase.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requireAuth } from '../src/middleware/auth.middleware.js';
+import { signToken } from '../src/utils/token.js';
+import { register, login, logout, getCurrentUser, resetPassword } from '../src/controllers/auth.controller.js';
+import { User } from '../src/models/user.model.js';
+import bcrypt from 'bcryptjs';
 
-describe('Auth & Ownership Middleware Tests', () => {
-  it('rejects requests without Authorization header with 401', async () => {
-    const req = { headers: {} };
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    };
-    const next = vi.fn();
-
-    await requireAuth(req, res, next);
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      success: false,
-      error: expect.objectContaining({ code: 'UNAUTHORIZED' })
-    }));
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  it('accepts valid mock token and populates req.user.uid strictly', async () => {
-    const req = { headers: { authorization: 'Bearer mock-uid-user_test_99' } };
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    };
-    const next = vi.fn();
-
-    await requireAuth(req, res, next);
-    expect(next).toHaveBeenCalled();
-    expect(req.user).toBeDefined();
-    expect(req.user.uid).toBe('user_test_99');
-  });
-
-  it('rejects malformed authorization header without Bearer prefix with 401', async () => {
-    const req = { headers: { authorization: 'Basic mock-uid-user' } };
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    };
-    const next = vi.fn();
-
-    await requireAuth(req, res, next);
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      success: false,
-      error: expect.objectContaining({ code: 'UNAUTHORIZED' })
-    }));
-    expect(next).not.toHaveBeenCalled();
-  });
-
-  it('accepts mock-token prefix in test environment', async () => {
-    const req = { headers: { authorization: 'Bearer mock-token-candidate_42' } };
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    };
-    const next = vi.fn();
-
-    await requireAuth(req, res, next);
-    expect(next).toHaveBeenCalled();
-    expect(req.user).toBeDefined();
-    expect(req.user.uid).toBe('candidate_42');
-    expect(req.user.email).toBe('candidate_42@hiremate.ai');
-  });
-
-  describe('Production Environment Security Restrictions', () => {
-    const originalEnv = process.env.NODE_ENV;
-
-    beforeEach(() => {
-      process.env.NODE_ENV = 'production';
-    });
-
-    afterEach(() => {
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('strictly rejects mock-uid tokens in production with 401', async () => {
-      const req = { headers: { authorization: 'Bearer mock-uid-impersonated_victim' } };
+describe('HireMate Nexus MongoDB Authentication & Security Tests', () => {
+  describe('Authentication Middleware (requireAuth)', () => {
+    it('rejects requests without Authorization header or cookie with 401', async () => {
+      const req = { headers: {} };
       const res = {
         status: vi.fn().mockReturnThis(),
         json: vi.fn()
@@ -87,19 +17,49 @@ describe('Auth & Ownership Middleware Tests', () => {
 
       await requireAuth(req, res, next);
       expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
         success: false,
-        error: {
-          code: 'INVALID_TOKEN',
-          message: 'Mock authentication tokens are not permitted in production environments.'
-        }
-      });
+        error: expect.objectContaining({ code: 'UNAUTHORIZED' })
+      }));
       expect(next).not.toHaveBeenCalled();
-      expect(req.user).toBeUndefined();
     });
 
-    it('strictly rejects mock-token tokens in production with 401', async () => {
-      const req = { headers: { authorization: 'Bearer mock-token-admin_user' } };
+    it('rejects malformed authorization header without Bearer prefix with 401', async () => {
+      const req = { headers: { authorization: 'Basic some-credentials' } };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      };
+      const next = vi.fn();
+
+      await requireAuth(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: 'UNAUTHORIZED' })
+      }));
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('rejects empty Bearer token string with 401', async () => {
+      const req = { headers: { authorization: 'Bearer   ' } };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      };
+      const next = vi.fn();
+
+      await requireAuth(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: 'UNAUTHORIZED' })
+      }));
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid or tampered JWT token with 401', async () => {
+      const req = { headers: { authorization: 'Bearer invalid.jwt.token' } };
       const res = {
         status: vi.fn().mockReturnThis(),
         json: vi.fn()
@@ -113,12 +73,17 @@ describe('Auth & Ownership Middleware Tests', () => {
         error: expect.objectContaining({ code: 'INVALID_TOKEN' })
       }));
       expect(next).not.toHaveBeenCalled();
-      expect(req.user).toBeUndefined();
     });
 
-    it('does not leak token value or sensitive credentials in error response', async () => {
-      const sensitiveToken = 'mock-uid-secret_123456';
-      const req = { headers: { authorization: `Bearer ${sensitiveToken}` } };
+    it('accepts valid JWT token and populates req.user correctly', async () => {
+      const validToken = signToken({
+        id: '67c1234567890abcdef12345',
+        uid: 'user_nexus_101',
+        email: 'candidate@hiremate.ai',
+        name: 'Alex Nexus'
+      });
+
+      const req = { headers: { authorization: `Bearer ${validToken}` } };
       const res = {
         status: vi.fn().mockReturnThis(),
         json: vi.fn()
@@ -126,232 +91,298 @@ describe('Auth & Ownership Middleware Tests', () => {
       const next = vi.fn();
 
       await requireAuth(req, res, next);
-      const responsePayload = JSON.stringify(res.json.mock.calls[0][0]);
-      expect(responsePayload).not.toContain(sensitiveToken);
+      expect(next).toHaveBeenCalled();
+      expect(req.user).toBeDefined();
+      expect(req.user.uid).toBe('user_nexus_101');
+      expect(req.user.email).toBe('candidate@hiremate.ai');
+      expect(req.user.name).toBe('Alex Nexus');
+    });
+
+    it('accepts valid JWT token from HttpOnly cookie', async () => {
+      const validToken = signToken({
+        id: '67c1234567890abcdef12345',
+        uid: 'user_cookie_99',
+        email: 'cookie_candidate@hiremate.ai',
+        name: 'Cookie User'
+      });
+
+      const req = {
+        headers: {},
+        cookies: { token: validToken }
+      };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      };
+      const next = vi.fn();
+
+      await requireAuth(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.user).toBeDefined();
+      expect(req.user.uid).toBe('user_cookie_99');
+      expect(req.user.email).toBe('cookie_candidate@hiremate.ai');
+    });
+
+    it('accepts valid JWT token parsed from raw Cookie header string', async () => {
+      const validToken = signToken({
+        id: '67c1234567890abcdef12345',
+        uid: 'user_raw_cookie_1',
+        email: 'raw@hiremate.ai',
+        name: 'Raw Cookie User'
+      });
+
+      const req = {
+        headers: { cookie: `sessionId=12345; token=${validToken}; other=true` }
+      };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      };
+      const next = vi.fn();
+
+      await requireAuth(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(req.user).toBeDefined();
+      expect(req.user.uid).toBe('user_raw_cookie_1');
     });
   });
 
-  describe('Fail-Closed Environment Security (Missing, Empty, or Unrecognized NODE_ENV)', () => {
-    const originalEnv = process.env.NODE_ENV;
+  describe('User Registration (register)', () => {
+    it('validates required fields and password match', async () => {
+      const testCases = [
+        { body: { name: '', email: 'a@b.com', password: 'password123', confirmPassword: 'password123' }, expectedCode: 'INVALID_NAME' },
+        { body: { name: 'A', email: 'a@b.com', password: 'password123', confirmPassword: 'password123' }, expectedCode: 'INVALID_NAME' },
+        { body: { name: 'Alex', email: 'not-an-email', password: 'password123', confirmPassword: 'password123' }, expectedCode: 'INVALID_EMAIL' },
+        { body: { name: 'Alex', email: 'alex@example.com', password: '123', confirmPassword: '123' }, expectedCode: 'INVALID_PASSWORD' },
+        { body: { name: 'Alex', email: 'alex@example.com', password: 'password123', confirmPassword: 'different' }, expectedCode: 'PASSWORD_MISMATCH' }
+      ];
 
-    afterEach(() => {
-      process.env.NODE_ENV = originalEnv;
-    });
-
-    it('strictly rejects mock tokens when NODE_ENV is undefined', async () => {
-      delete process.env.NODE_ENV;
-      const req = { headers: { authorization: 'Bearer mock-uid-attacker' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
-      };
-      const next = vi.fn();
-
-      await requireAuth(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INVALID_TOKEN',
-          message: 'Mock authentication tokens are permitted only in development and test environments.'
-        })
-      }));
-      expect(next).not.toHaveBeenCalled();
-      expect(req.user).toBeUndefined();
-    });
-
-    it('strictly rejects mock tokens when NODE_ENV is empty string', async () => {
-      process.env.NODE_ENV = '';
-      const req = { headers: { authorization: 'Bearer mock-token-attacker' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
-      };
-      const next = vi.fn();
-
-      await requireAuth(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INVALID_TOKEN',
-          message: 'Mock authentication tokens are permitted only in development and test environments.'
-        })
-      }));
-      expect(next).not.toHaveBeenCalled();
-      expect(req.user).toBeUndefined();
-    });
-
-    it('strictly rejects mock tokens when NODE_ENV is whitespace only', async () => {
-      process.env.NODE_ENV = '   ';
-      const req = { headers: { authorization: 'Bearer mock-uid-whitespace' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
-      };
-      const next = vi.fn();
-
-      await requireAuth(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INVALID_TOKEN'
-        })
-      }));
-      expect(next).not.toHaveBeenCalled();
-      expect(req.user).toBeUndefined();
-    });
-
-    it('strictly rejects mock tokens when NODE_ENV is unrecognized (staging, preview, qa)', async () => {
-      for (const envVal of ['staging', 'preview', 'qa', 'unknown']) {
-        process.env.NODE_ENV = envVal;
-        const req = { headers: { authorization: 'Bearer mock-uid-test' } };
-        const res = {
-          status: vi.fn().mockReturnThis(),
-          json: vi.fn()
-        };
-        const next = vi.fn();
-
-        await requireAuth(req, res, next);
-        expect(res.status).toHaveBeenCalledWith(401);
+      for (const tc of testCases) {
+        const req = { body: tc.body };
+        const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+        await register(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
           success: false,
-          error: expect.objectContaining({
-            code: 'INVALID_TOKEN',
-            message: 'Mock authentication tokens are permitted only in development and test environments.'
-          })
+          error: expect.objectContaining({ code: tc.expectedCode })
         }));
-        expect(next).not.toHaveBeenCalled();
-        expect(req.user).toBeUndefined();
       }
     });
 
-    it('preserves valid Firebase token verification even when NODE_ENV is undefined or unrecognized', async () => {
-      delete process.env.NODE_ENV;
-      const verifyIdTokenMock = vi.fn().mockResolvedValueOnce({
-        uid: 'verified_firebase_uid_unrecognized_env',
-        email: 'user@hiremate.ai'
-      });
-      const authSpy = vi.spyOn(admin, 'auth').mockReturnValue({
-        verifyIdToken: verifyIdTokenMock
+    it('prevents duplicate email registrations with 409 Conflict', async () => {
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce({ _id: 'existing_id', email: 'duplicate@example.com' });
+
+      const req = {
+        body: {
+          name: 'Existing Candidate',
+          email: 'duplicate@example.com',
+          password: 'Password123!',
+          confirmPassword: 'Password123!'
+        }
+      };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await register(req, res);
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: 'EMAIL_ALREADY_EXISTS' })
+      }));
+    });
+
+    it('successfully registers new user, sets cookie, and returns JWT', async () => {
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce(null);
+      vi.spyOn(User.prototype, 'save').mockImplementation(async function () {
+        this._id = 'mock_mongo_id_123';
+        this.firebaseUid = 'mock_mongo_id_123';
+        return this;
       });
 
-      const req = { headers: { authorization: 'Bearer valid_firebase_jwt' } };
+      const req = {
+        body: {
+          name: 'Sarah Connor',
+          email: 'sarah@example.com',
+          password: 'SecurePassword123!',
+          confirmPassword: 'SecurePassword123!'
+        }
+      };
       const res = {
         status: vi.fn().mockReturnThis(),
-        json: vi.fn()
+        json: vi.fn(),
+        cookie: vi.fn()
       };
-      const next = vi.fn();
 
-      await requireAuth(req, res, next);
-      expect(verifyIdTokenMock).toHaveBeenCalledWith('valid_firebase_jwt');
-      expect(next).toHaveBeenCalled();
-      expect(req.user).toEqual({
-        uid: 'verified_firebase_uid_unrecognized_env',
-        email: 'user@hiremate.ai'
-      });
-
-      authSpy.mockRestore();
+      await register(req, res);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.cookie).toHaveBeenCalledWith('token', expect.any(String), expect.any(Object));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          token: expect.any(String),
+          user: expect.objectContaining({
+            email: 'sarah@example.com',
+            name: 'Sarah Connor'
+          })
+        })
+      }));
     });
   });
 
-  describe('Live Firebase Token Verification Flow', () => {
-    it('authenticates user when Firebase token is verified successfully', async () => {
-      const verifyIdTokenMock = vi.fn().mockResolvedValueOnce({
-        uid: 'verified_firebase_uid_123',
-        email: 'candidate@example.com'
-      });
-      const authSpy = vi.spyOn(admin, 'auth').mockReturnValue({
-        verifyIdToken: verifyIdTokenMock
-      });
+  describe('User Login (login)', () => {
+    it('validates presence of email and password', async () => {
+      const req = { body: { email: '', password: '' } };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
 
-      const req = { headers: { authorization: 'Bearer live_valid_firebase_jwt_token' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
-      };
-      const next = vi.fn();
-
-      await requireAuth(req, res, next);
-      expect(verifyIdTokenMock).toHaveBeenCalledWith('live_valid_firebase_jwt_token');
-      expect(next).toHaveBeenCalled();
-      expect(req.user).toEqual({
-        uid: 'verified_firebase_uid_123',
-        email: 'candidate@example.com'
-      });
-
-      authSpy.mockRestore();
+      await login(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.objectContaining({ code: 'MISSING_CREDENTIALS' })
+      }));
     });
 
-    it('rejects with 401 when Firebase token verification fails or expires', async () => {
-      const verifyIdTokenMock = vi.fn().mockRejectedValueOnce(
-        new Error('Token signature is invalid or expired')
-      );
-      const authSpy = vi.spyOn(admin, 'auth').mockReturnValue({
-        verifyIdToken: verifyIdTokenMock
+    it('returns 401 when email is not registered', async () => {
+      vi.spyOn(User, 'findOne').mockReturnValueOnce({
+        select: vi.fn().mockResolvedValueOnce(null)
       });
 
-      const req = { headers: { authorization: 'Bearer invalid_or_expired_jwt' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
-      };
-      const next = vi.fn();
+      const req = { body: { email: 'nonexistent@example.com', password: 'password123' } };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
 
-      await requireAuth(req, res, next);
+      await login(req, res);
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INVALID_TOKEN'
-        })
+        error: expect.objectContaining({ code: 'INVALID_CREDENTIALS' })
       }));
-      expect(next).not.toHaveBeenCalled();
-
-      authSpy.mockRestore();
     });
 
-    it('rejects with 401 when Firebase token returns empty or null uid payload', async () => {
-      const verifyIdTokenMock = vi.fn().mockResolvedValueOnce({
-        uid: '',
-        email: 'no_uid@example.com'
-      });
-      const authSpy = vi.spyOn(admin, 'auth').mockReturnValue({
-        verifyIdToken: verifyIdTokenMock
-      });
-
-      const req = { headers: { authorization: 'Bearer malformed_payload_jwt' } };
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn()
+    it('returns 401 when password does not match', async () => {
+      const mockUser = {
+        _id: 'mock_id',
+        email: 'user@example.com',
+        name: 'User',
+        password: 'hashed_password',
+        comparePassword: vi.fn().mockResolvedValueOnce(false)
       };
-      const next = vi.fn();
 
-      await requireAuth(req, res, next);
+      vi.spyOn(User, 'findOne').mockReturnValueOnce({
+        select: vi.fn().mockResolvedValueOnce(mockUser)
+      });
+
+      const req = { body: { email: 'user@example.com', password: 'wrongPassword' } };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await login(req, res);
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INVALID_TOKEN'
+        error: expect.objectContaining({ code: 'INVALID_CREDENTIALS' })
+      }));
+    });
+
+    it('authenticates valid credentials, sets cookie, and returns JWT', async () => {
+      const mockUser = {
+        _id: 'user_valid_id',
+        firebaseUid: 'user_valid_id',
+        email: 'valid@example.com',
+        name: 'Valid User',
+        password: 'hashed_password',
+        comparePassword: vi.fn().mockResolvedValueOnce(true)
+      };
+
+      vi.spyOn(User, 'findOne').mockReturnValueOnce({
+        select: vi.fn().mockResolvedValueOnce(mockUser)
+      });
+
+      const req = { body: { email: 'valid@example.com', password: 'correctPassword' } };
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+        cookie: vi.fn()
+      };
+
+      await login(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.cookie).toHaveBeenCalledWith('token', expect.any(String), expect.any(Object));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          token: expect.any(String),
+          user: expect.objectContaining({
+            email: 'valid@example.com',
+            name: 'Valid User'
+          })
         })
       }));
-      expect(next).not.toHaveBeenCalled();
-
-      authSpy.mockRestore();
     });
   });
 
-  it('rejects empty bearer token with 401', async () => {
-    const req = { headers: { authorization: 'Bearer ' } };
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    };
-    const next = vi.fn();
+  describe('Session Management & Logout (getCurrentUser, logout, resetPassword)', () => {
+    it('getCurrentUser returns authenticated profile from MongoDB', async () => {
+      const mockUser = {
+        _id: 'u123',
+        firebaseUid: 'u123',
+        email: 'profile@example.com',
+        name: 'Profile User',
+        currentLevel: 'intermediate',
+        skills: ['JavaScript', 'Python'],
+        links: { github: 'https://github.com/profile' }
+      };
 
-    await requireAuth(req, res, next);
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce(mockUser);
+
+      const req = { user: { id: 'u123', uid: 'u123' } };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await getCurrentUser(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          user: expect.objectContaining({
+            email: 'profile@example.com',
+            name: 'Profile User'
+          })
+        })
+      }));
+    });
+
+    it('logout clears the auth cookie and returns success', async () => {
+      const req = {};
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+        clearCookie: vi.fn()
+      };
+
+      await logout(req, res);
+      expect(res.clearCookie).toHaveBeenCalledWith('token', expect.any(Object));
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true
+      }));
+    });
+
+    it('resetPassword updates user password securely', async () => {
+      const mockUser = {
+        _id: 'user_reset',
+        email: 'reset@example.com',
+        save: vi.fn().mockResolvedValueOnce(true)
+      };
+
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce(mockUser);
+
+      const req = {
+        body: {
+          email: 'reset@example.com',
+          password: 'newPassword123!',
+          confirmPassword: 'newPassword123!'
+        }
+      };
+      const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+      await resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(mockUser.password).toBe('newPassword123!');
+    });
   });
 });
