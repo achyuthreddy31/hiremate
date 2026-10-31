@@ -20,10 +20,44 @@ import { checkDbConnection } from './middleware/dbCheck.middleware.js';
 const app = express();
 
 app.use(helmet());
+
+// Dynamic CORS configuration allowing production Vercel frontend, preview domains, and local dev
+const allowedOrigins = [
+  'https://hiremate-lilac.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
+if (env.CLIENT_URL) {
+  env.CLIENT_URL.split(',').forEach((url) => {
+    const trimmed = url.trim();
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed);
+    }
+  });
+}
+
 app.use(cors({
-  origin: env.CLIENT_URL,
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. curl, server-to-server, mobile)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const isExplicitlyAllowed = allowedOrigins.includes(origin);
+    const isVercelDomain = /^https:\/\/.*\.vercel\.app$/.test(origin);
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+    if (isExplicitlyAllowed || isVercelDomain || isLocalhost) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
 app.use(express.json({ limit: '2mb' }));
@@ -74,6 +108,20 @@ app.use('/api/v1/practice', checkDbConnection, practiceRoutes);
 app.use('/api/v1/interview-prep', checkDbConnection, interviewPrepRoutes);
 app.use('/api/v1/readiness', checkDbConnection, readinessDashboardRoutes);
 app.use('/api/v1/workflow', checkDbConnection, workflowRoutes);
+
+// Root Route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    service: 'HireMate Nexus API Server',
+    version: '1.0.0',
+    status: 'operational',
+    endpoints: {
+      health: '/api/v1/health',
+      auth: '/api/v1/auth'
+    }
+  });
+});
 
 // 404 Handler
 app.use((req, res) => {

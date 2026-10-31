@@ -12,7 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().transform(Number).default('5000'),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  CLIENT_URL: z.string().default('http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://localhost:27017/hiremate_ai'),
   JWT_SECRET: z.string().default('hiremate-nexus-secure-jwt-secret-key-32chars-min'),
   JWT_EXPIRES_IN: z.string().default('7d'),
