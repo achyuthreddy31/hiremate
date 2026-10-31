@@ -20,16 +20,6 @@ export const COMPANY_HUB_SECTIONS = [
   { id: 'financial_market', title: 'Financial & Market Position', icon: 'TrendingUp' }
 ];
 
-function shuffleQuizOptions(options, correctValue) {
-  const arr = [...options];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  const correctAnswerIndex = arr.indexOf(correctValue);
-  return { options: arr, correctAnswerIndex };
-}
-
 export function parseGroundingBulletPoints({
   bulletLines = [],
   groundingSupports = [],
@@ -234,46 +224,6 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     }
   ];
 
-  // Distractors bank for legacy test compatibility
-  const distractorsByCategory = {
-    overview_milestones: [
-      `Specializes solely in traditional legacy mechanical equipment manufacturing.`,
-      `Operates exclusively as an outsourced non-technical third-party call center.`,
-      `Does not maintain any internal digital software services or customer platforms.`
-    ],
-    culture_values: [
-      `Enforces strict top-down micromanagement where automated unit tests are strictly prohibited.`,
-      `Explicitly discourages cross-team technical communication and shared documentation.`,
-      `Requires all production releases to be performed without code reviews or staging environments.`
-    ]
-  };
-
-  const verifiedOnly = items.filter(i => i.label === 'verified');
-  const seenPrompts = new Set();
-  const quiz = [];
-
-  for (let index = 0; index < Math.min(4, verifiedOnly.length); index++) {
-    const item = verifiedOnly[index];
-    let questionPrompt = `Regarding ${item.category.replace(/_/g, ' ')}, what is verified about ${companyName}?`;
-
-    if (seenPrompts.has(questionPrompt)) {
-      questionPrompt = `${questionPrompt} (Item #${index + 1})`;
-    }
-    seenPrompts.add(questionPrompt);
-
-    const distractors = distractorsByCategory[item.category] || distractorsByCategory.overview_milestones;
-    const rawOptions = [item.information, ...distractors.slice(0, 3)];
-    const { options, correctAnswerIndex } = shuffleQuizOptions(rawOptions, item.information);
-
-    quiz.push({
-      question: questionPrompt,
-      options,
-      correctAnswerIndex,
-      explanation: `Verified directly from company research: ${item.sourceUrl}`,
-      sourceUrl: item.sourceUrl
-    });
-  }
-
   const sectionsReviewed = COMPANY_HUB_SECTIONS.map(s => ({
     category: s.id,
     reviewed: false
@@ -282,8 +232,6 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
   return {
     companyName,
     items,
-    sectionsReviewed,
-    quiz,
-    latestQuizScore: null
+    sectionsReviewed
   };
 }

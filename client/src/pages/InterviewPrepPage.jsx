@@ -104,7 +104,7 @@ export default function InterviewPrepPage() {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
             <span>{generating ? 'Structuring STAR Guidance...' : 'Generate Questions & STAR Guidance'}</span>
@@ -120,7 +120,7 @@ export default function InterviewPrepPage() {
 
         {!prep && !loading && (
           <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm">
-            <HelpCircle size={32} className="text-indigo-600 mx-auto mb-3" />
+            <HelpCircle size={32} className="text-blue-600 mx-auto mb-3" />
             <h3 className="font-bold text-base">Preparation Material Not Yet Generated</h3>
             <p className="text-xs text-[var(--text-muted)] mt-1 mb-5 leading-relaxed">
               Generate target technical questions, behavioral stories, and candidate-specific project deep dives.
@@ -128,7 +128,7 @@ export default function InterviewPrepPage() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
             >
               Generate Interview Preparation
             </button>
@@ -142,7 +142,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('technical')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'technical' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'technical' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Technical ({prep.technicalQuestions?.length || 0})
@@ -150,7 +150,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('behavioral')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'behavioral' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'behavioral' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Behavioral (STAR) ({prep.behavioralQuestions?.length || 0})
@@ -158,7 +158,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('project')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'project' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'project' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Project Deep Dives ({prep.projectBasedQuestions?.length || 0})
@@ -166,7 +166,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('resume')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'resume' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'resume' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Resume-Based ({prep.resumeBasedQuestions?.length || 0})
@@ -174,7 +174,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('improvements')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'improvements' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'improvements' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Resume Improvements ({resumeImprovements.length})
@@ -182,7 +182,7 @@ export default function InterviewPrepPage() {
               <button
                 onClick={() => setActiveTab('stages')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                  activeTab === 'stages' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'stages' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 Stage Checklists ({prep.stageChecklists?.length || 0})
@@ -196,7 +196,7 @@ export default function InterviewPrepPage() {
                   <div key={idx} className="p-5 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-4 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                           {q.category}
                         </span>
                         <h4 className="font-bold text-base sm:text-lg mt-2">{q.question}</h4>
@@ -218,10 +218,10 @@ export default function InterviewPrepPage() {
                     {q.starGuidance && (
                       <div className="p-4 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] text-xs space-y-1.5 leading-relaxed">
                         <div className="font-bold text-[var(--text-primary)]">STAR Answer Framework:</div>
-                        <div><span className="font-bold text-indigo-600 dark:text-indigo-400">Situation: </span>{q.starGuidance.situation}</div>
-                        <div><span className="font-bold text-indigo-600 dark:text-indigo-400">Task: </span>{q.starGuidance.task}</div>
-                        <div><span className="font-bold text-indigo-600 dark:text-indigo-400">Action: </span>{q.starGuidance.action}</div>
-                        <div><span className="font-bold text-indigo-600 dark:text-indigo-400">Result: </span>{q.starGuidance.result}</div>
+                        <div><span className="font-bold text-blue-600 dark:text-blue-400">Situation: </span>{q.starGuidance.situation}</div>
+                        <div><span className="font-bold text-blue-600 dark:text-blue-400">Task: </span>{q.starGuidance.task}</div>
+                        <div><span className="font-bold text-blue-600 dark:text-blue-400">Action: </span>{q.starGuidance.action}</div>
+                        <div><span className="font-bold text-blue-600 dark:text-blue-400">Result: </span>{q.starGuidance.result}</div>
                       </div>
                     )}
 
@@ -243,7 +243,7 @@ export default function InterviewPrepPage() {
                     <div className="pt-2 border-t border-[var(--border-subtle)]">
                       <div className="flex justify-between items-center mb-1.5">
                         <label className="text-[11px] font-bold text-[var(--text-muted)] flex items-center gap-1.5">
-                          <Lock size={12} className="text-indigo-500" />
+                          <Lock size={12} className="text-blue-500" />
                           <span>Private Reflection Notes:</span>
                         </label>
                         {savingNotesIndex === idx && (
@@ -257,7 +257,7 @@ export default function InterviewPrepPage() {
                         defaultValue={q.privateNotes || ''}
                         onBlur={(e) => handleSaveNotes('technicalQuestions', idx, e.target.value, q.prepared)}
                         placeholder="Type personal reflections, talking points, or project examples..."
-                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 leading-relaxed"
+                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 leading-relaxed"
                       />
                     </div>
                   </div>
@@ -306,7 +306,7 @@ export default function InterviewPrepPage() {
                         defaultValue={q.privateNotes || ''}
                         onBlur={(e) => handleSaveNotes('behavioralQuestions', idx, e.target.value, q.prepared)}
                         placeholder="Draft your personal STAR story for this competency..."
-                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 leading-relaxed"
+                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 leading-relaxed"
                       />
                     </div>
                   </div>
@@ -321,7 +321,7 @@ export default function InterviewPrepPage() {
                   <div key={idx} className="p-5 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-3 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                           {q.projectTitle || 'Project Architecture'}
                         </span>
                         <h4 className="font-bold text-base mt-2">{q.question}</h4>
@@ -350,7 +350,7 @@ export default function InterviewPrepPage() {
                         defaultValue={q.privateNotes || ''}
                         onBlur={(e) => handleSaveNotes('projectBasedQuestions', idx, e.target.value, q.prepared)}
                         placeholder="Notes on architectural decisions, trade-offs, and metrics for this project..."
-                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 leading-relaxed"
+                        className="w-full p-3 rounded-xl text-xs bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 leading-relaxed"
                       />
                     </div>
                   </div>
@@ -397,7 +397,7 @@ export default function InterviewPrepPage() {
                 {resumeImprovements.map((imp, idx) => (
                   <div key={idx} className="p-5 sm:p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-3 shadow-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                         {imp.category.replace(/_/g, ' ')}
                       </span>
                       {imp.needsUserInput && (
@@ -407,7 +407,7 @@ export default function InterviewPrepPage() {
                       )}
                     </div>
                     <div className="text-xs space-y-1.5 leading-relaxed">
-                      <div><span className="font-bold text-slate-400">Original: </span><span className="line-through">{imp.original}</span></div>
+                      <div><span className="font-bold text-slate-500 dark:text-slate-400">Previous Draft: </span><span className="text-slate-700 dark:text-slate-200 font-medium">{imp.original}</span></div>
                       <div><span className="font-bold text-emerald-600 dark:text-emerald-400">Truthful Rewrite: </span><span className="font-semibold">{imp.suggestion}</span></div>
                       <div className="text-[var(--text-muted)] mt-1">{imp.reason}</div>
                       {imp.promptForUser && (
@@ -430,7 +430,7 @@ export default function InterviewPrepPage() {
                     <div className="space-y-2">
                       {stage.items?.map((item, iIdx) => (
                         <div key={iIdx} className="flex items-center gap-2.5 text-xs">
-                          <CheckSquare size={15} className="text-indigo-500 shrink-0" />
+                          <CheckSquare size={15} className="text-blue-500 shrink-0" />
                           <span>{item.title}</span>
                         </div>
                       ))}

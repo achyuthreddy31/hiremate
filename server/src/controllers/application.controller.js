@@ -1,4 +1,5 @@
-﻿import { Application } from '../models/application.model.js';
+import { Application } from '../models/application.model.js';
+import { USER_DEPENDENT_MODELS } from '../services/accountDeletion.service.js';
 import mongoose from 'mongoose';
 
 export async function getApplications(req, res) {
@@ -119,18 +120,9 @@ export async function deleteApplication(req, res) {
       });
     }
 
-    // Cascade delete application-linked models dynamically if registered
-    const modelsToCascade = [
-      'Resume', 'CandidateProfile', 'JobAnalysis', 'MatchReport',
-      'Roadmap', 'LearningRecommendation', 'PracticeQuestion',
-      'PracticeAttempt', 'CompanyResearch', 'InterviewPreparation',
-      'Checklist', 'ReadinessSnapshot', 'GenerationJob'
-    ];
-
-    for (const modelName of modelsToCascade) {
-      if (mongoose.models[modelName]) {
-        await mongoose.models[modelName].deleteMany({ applicationId: id, firebaseUid: req.user.uid });
-      }
+    // Cascade delete across all 13 application-linked models directly
+    for (const { model } of USER_DEPENDENT_MODELS) {
+      await model.deleteMany({ applicationId: id, firebaseUid: req.user.uid });
     }
 
     return res.status(200).json({

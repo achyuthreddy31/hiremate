@@ -47,7 +47,7 @@ export default class ErrorBoundary extends React.Component {
               </button>
               <button
                 onClick={this.handleReset}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors shadow-sm"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-sm"
               >
                 <Home size={14} />
                 <span>Go to Dashboard</span>

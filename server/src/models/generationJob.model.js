@@ -16,9 +16,22 @@ const generationJobSchema = new mongoose.Schema({
     type: String,
     default: 'prepare_completely'
   },
+  runId: {
+    type: String,
+    default: () => `run_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    index: true
+  },
+  startedAt: {
+    type: Date,
+    default: null
+  },
+  completedAt: {
+    type: Date,
+    default: null
+  },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'],
+    enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'],
     default: 'pending'
   },
   currentStage: {
@@ -40,7 +53,7 @@ const generationJobSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'completed', 'failed'],
+      enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'],
       default: 'pending'
     },
     error: {

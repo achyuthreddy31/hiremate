@@ -224,6 +224,132 @@ describe('HireMate AI Deterministic Scoring Unit Tests', () => {
       expect(day5Tasks.some(t => t.topic.includes('Review'))).toBe(true);
       expect(day5Tasks.some(t => t.topic.includes('Checklist'))).toBe(true);
     });
+
+    it('enforces strict topic continuity with contiguous blocks and no modulo round-robin jumping', () => {
+      const gaps = [
+        { id: 'g1', name: 'React', importance: 'critical', score: 20 },
+        { id: 'g2', name: 'Node.js', importance: 'critical', score: 25 },
+        { id: 'g3', name: 'PostgreSQL', importance: 'important', score: 40 }
+      ];
+
+      const res = allocateRoadmapSlots({
+        userAvailableDays: 14,
+        dailyPreparationMinutes: 60,
+        gaps
+      });
+
+      expect(res.totalDays).toBe(14);
+      expect(res.studyDays).toBe(13);
+
+      const studyTasks = res.scheduledTasks.filter(t => t.day <= 13);
+      // Group study days by topic
+      const topicDayMap = new Map();
+      studyTasks.forEach(task => {
+        if (!topicDayMap.has(task.topic)) {
+          topicDayMap.set(task.topic, []);
+        }
+        topicDayMap.get(task.topic).push(task.day);
+      });
+
+      // Verify that every topic's days are strictly contiguous: min to max without breaks
+      for (const [topic, days] of topicDayMap.entries()) {
+        const sortedDays = [...days].sort((a, b) => a - b);
+        for (let i = 1; i < sortedDays.length; i++) {
+          expect(sortedDays[i]).toBe(sortedDays[i - 1] + 1);
+        }
+      }
+    });
+
+    it('cleans headings and prevents markdown artifacts or strikethrough characters', () => {
+      const gaps = [
+        { id: 'g1', name: '~~OldSkill~~ Architecture', importance: 'critical', score: 10 }
+      ];
+
+      const res = allocateRoadmapSlots({
+        userAvailableDays: 3,
+        gaps
+      });
+
+      const task = res.scheduledTasks.find(t => t.day === 1);
+      expect(task.title).not.toContain('~~');
+      expect(task.title).not.toContain('~');
+      expect(task.title).toContain('OldSkill Architecture');
+    });
+
+    it('assigns structured sub-day task properties to final day revision items', () => {
+      const gaps = [
+        { id: 'g1', name: 'System Design', importance: 'critical', score: 20 }
+      ];
+
+      const res = allocateRoadmapSlots({
+        userAvailableDays: 14,
+        gaps
+      });
+
+      const day14Tasks = res.scheduledTasks.filter(t => t.day === 14);
+      expect(day14Tasks.length).toBe(2);
+      expect(day14Tasks[0].dayLabel).toBe('Day 14 (Part 1 of 2)');
+      expect(day14Tasks[1].dayLabel).toBe('Day 14 (Part 2 of 2)');
+      expect(day14Tasks[0].subTask).toBe(1);
+      expect(day14Tasks[1].subTask).toBe(2);
+    });
+  });
+
+  describe('3.7 Phase 3: Language Templates and Auto-Graded Readiness', () => {
+    it('provides genuine, authentic language-specific starter templates for all 6 languages', async () => {
+      const { CURATED_CODING_CHALLENGES } = await import('../src/services/practiceBank.js');
+
+      // Python
+      expect(CURATED_CODING_CHALLENGES.Python).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES.Python[0].starterCode).toContain('def ');
+      expect(CURATED_CODING_CHALLENGES.Python[0].referenceSolution).toContain('def ');
+
+      // JavaScript
+      expect(CURATED_CODING_CHALLENGES.JavaScript).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES.JavaScript[0].starterCode).toContain('function ');
+      expect(CURATED_CODING_CHALLENGES.JavaScript[0].referenceSolution).toContain('function ');
+
+      // Java
+      expect(CURATED_CODING_CHALLENGES.Java).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES.Java[0].starterCode).toContain('class Solution');
+      expect(CURATED_CODING_CHALLENGES.Java[0].starterCode).toContain('public String reverseString');
+      expect(CURATED_CODING_CHALLENGES.Java[0].referenceSolution).toContain('class Solution');
+      expect(CURATED_CODING_CHALLENGES.Java[1].starterCode).toContain('public int maxSubArray');
+
+      // C
+      expect(CURATED_CODING_CHALLENGES.C).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES.C[0].starterCode).toContain('#include <stdio.h>');
+      expect(CURATED_CODING_CHALLENGES.C[0].starterCode).toContain('char* reverseString');
+      expect(CURATED_CODING_CHALLENGES.C[1].starterCode).toContain('int maxSubArray');
+
+      // C++
+      expect(CURATED_CODING_CHALLENGES['C++']).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES['C++'][0].starterCode).toContain('class Solution');
+      expect(CURATED_CODING_CHALLENGES['C++'][0].starterCode).toContain('std::string reverseString');
+      expect(CURATED_CODING_CHALLENGES['C++'][1].starterCode).toContain('int maxSubArray');
+
+      // TypeScript
+      expect(CURATED_CODING_CHALLENGES.TypeScript).toBeDefined();
+      expect(CURATED_CODING_CHALLENGES.TypeScript[0].starterCode).toContain('function filterEvenNumbers(nums: number[]): number[]');
+      expect(CURATED_CODING_CHALLENGES.TypeScript[1].starterCode).toContain('function twoSum(nums: number[], target: number): number[]');
+    });
+
+    it('includes code_writing attempts in Interview Readiness Score calculation', () => {
+      const res = calculateInterviewReadinessScore({
+        skillMatchTotal: 80,
+        codingAttempts: [
+          { type: 'code_writing', isCorrect: true },
+          { type: 'code_writing', isCorrect: true },
+          { type: 'code_writing', isCorrect: false }
+        ],
+        practiceTestScores: [85],
+        resumeQualityScore: 90
+      });
+
+      expect(res.categories.coding.status).toBe('active');
+      expect(res.categories.coding.score).toBe(67);
+      expect(res.areasStartedCount).toBe(4);
+    });
   });
 
 });

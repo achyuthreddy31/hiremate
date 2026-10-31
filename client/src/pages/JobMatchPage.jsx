@@ -116,7 +116,7 @@ export default function JobMatchPage() {
           <button
             onClick={handleRunMatch}
             disabled={running}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={running ? "animate-spin" : ""} />
             <span>{running ? 'Calculating Pure Alignment...' : 'Calculate Alignment Score'}</span>
@@ -131,7 +131,7 @@ export default function JobMatchPage() {
 
         {!report && !loading && (
           <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm">
-            <Briefcase size={32} className="text-indigo-600 mx-auto mb-3" />
+            <Briefcase size={32} className="text-blue-600 mx-auto mb-3" />
             <h3 className="font-bold text-base">Alignment Not Yet Calculated</h3>
             <p className="text-xs text-[var(--text-muted)] mt-1 mb-5">
               Click "Calculate Alignment Score" to parse requirements and evaluate your profile against the target job.
@@ -139,7 +139,7 @@ export default function JobMatchPage() {
             <button
               onClick={handleRunMatch}
               disabled={running}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
             >
               Run Job Alignment Analysis
             </button>
@@ -152,7 +152,7 @@ export default function JobMatchPage() {
             <div className="p-6 sm:p-7 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Target Alignment Score</span>
-                <div className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">
+                <div className="text-4xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">
                   {report.totalScore}%
                 </div>
                 <div className="text-xs text-[var(--text-muted)] mt-1">
@@ -180,7 +180,7 @@ export default function JobMatchPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Next Recommended Step</span>
                 <Link
                   to={`/app/${applicationId}/roadmap`}
-                  className="inline-flex items-center justify-between p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white transition-colors"
+                  className="inline-flex items-center justify-between p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 font-bold text-xs border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white transition-colors"
                 >
                   <span>Generate Preparation Roadmap</span>
                   <ArrowRight size={14} />
@@ -197,7 +197,7 @@ export default function JobMatchPage() {
                     <div key={catKey} className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] space-y-1">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold capitalize">{catKey.replace(/([A-Z])/g, ' $1')}</span>
-                        <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                        <span className="font-extrabold text-blue-600 dark:text-blue-400">
                           {catVal.status === 'included' ? `${catVal.score}% (W: ${catVal.weight})` : `${catVal.status}`}
                         </span>
                       </div>
@@ -213,7 +213,7 @@ export default function JobMatchPage() {
               <button
                 onClick={() => setActiveTab('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  activeTab === 'all' ? 'bg-indigo-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
+                  activeTab === 'all' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 All Requirements ({requirements.length})
@@ -272,7 +272,7 @@ export default function JobMatchPage() {
                     </div>
                     <div>
                       <span className="font-bold text-[var(--text-primary)]">Recommended Action: </span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">{req.recommendedAction}</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-medium">{req.recommendedAction}</span>
                     </div>
                   </div>
                 </div>

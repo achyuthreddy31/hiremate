@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parseGroundingBulletPoints, buildCompanyResearchDataset } from '../src/services/companyResearch.service.js';
 
 describe('Company Research & Grounding Parser Tests', () => {
@@ -31,14 +31,16 @@ describe('Company Research & Grounding Parser Tests', () => {
     expect(result.droppedClaimsCount).toBe(1);
   });
 
-  it('builds dataset with verified-only quiz questions', () => {
+  it('builds dataset with comprehensive 7-area research hub and sections reviewed structure', () => {
     const dataset = buildCompanyResearchDataset('Acme Corp');
 
     expect(dataset.companyName).toBe('Acme Corp');
-    expect(dataset.quiz.length).toBeGreaterThan(0);
-    for (const q of dataset.quiz) {
-      expect(q.sourceUrl).toBeDefined();
-      expect(q.options.length).toBe(4);
+    expect(dataset.items.length).toBeGreaterThanOrEqual(14);
+    expect(dataset.sectionsReviewed.length).toBe(7);
+    expect(dataset.quiz).toBeUndefined();
+    for (const item of dataset.items) {
+      expect(item.sourceUrl).toBeDefined();
+      expect(['verified', 'inferred', 'predicted', 'unavailable']).toContain(item.label);
     }
   });
 });

@@ -60,7 +60,7 @@ export default function CreateApplicationPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-          <Link to="/dashboard" className="hover:text-indigo-600 flex items-center gap-1">
+          <Link to="/dashboard" className="hover:text-blue-600 flex items-center gap-1">
             <ArrowLeft size={13} />
             <span>Back to Applications Hub</span>
           </Link>
@@ -91,7 +91,7 @@ export default function CreateApplicationPage() {
                 value={formData.companyName}
                 onChange={handleChange}
                 placeholder="e.g. Stripe, Google, or Shopify"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
             <div>
@@ -103,7 +103,7 @@ export default function CreateApplicationPage() {
                 value={formData.jobTitle}
                 onChange={handleChange}
                 placeholder="e.g. Software Engineer, Backend"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function CreateApplicationPage() {
                   value={formData.jobUrl}
                   onChange={handleChange}
                   placeholder="https://company.com/careers/job123"
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function CreateApplicationPage() {
                   value={formData.location}
                   onChange={handleChange}
                   placeholder="e.g. Remote, New York, or Bangalore"
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function CreateApplicationPage() {
                 name="employmentType"
                 value={formData.employmentType}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               >
                 <option value="full_time">Full-Time</option>
                 <option value="part_time">Part-Time</option>
@@ -163,7 +163,7 @@ export default function CreateApplicationPage() {
                 name="experienceLevel"
                 value={formData.experienceLevel}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               >
                 <option value="entry_level">Entry Level</option>
                 <option value="mid_level">Mid Level</option>
@@ -186,7 +186,7 @@ export default function CreateApplicationPage() {
               value={formData.jobDescription}
               onChange={handleChange}
               placeholder="Paste the genuine job description text directly from the job board or company career page..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
             />
           </div>
 
@@ -199,7 +199,7 @@ export default function CreateApplicationPage() {
                 name="interviewDate"
                 value={formData.interviewDate}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -211,7 +211,7 @@ export default function CreateApplicationPage() {
                 max={180}
                 value={formData.availableDays}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
             <div>
@@ -224,7 +224,7 @@ export default function CreateApplicationPage() {
                 step={10}
                 value={formData.dailyPreparationMinutes}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function CreateApplicationPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create Target Application'}
               <ArrowRight size={16} />

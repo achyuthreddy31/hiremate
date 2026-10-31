@@ -1,7 +1,7 @@
 import { evaluateAdaptiveDifficulty } from './scoring/adaptiveDifficulty.js';
 import { callGeminiStructured, getGeminiClient } from './gemini.service.js';
 import { z } from 'zod';
-import vm from 'vm';
+import { evaluateCodingSolution } from './codeExecution/index.js';
 import {
   PRACTICE_CATEGORIES,
   DIFFICULTY_MAP,
@@ -32,6 +32,44 @@ export function shuffleArray(array = []) {
 }
 
 /**
+ * Known technical skills across platform categories for text-level skill differentiation.
+ */
+const KNOWN_SKILLS = [
+  'python', 'java', 'c', 'cpp', 'c++', 'javascript', 'typescript',
+  'html', 'css', 'react', 'nodejs', 'expressjs', 'fastapi',
+  'sql', 'mongodb', 'postgresql', 'mysql',
+  'data structures algorithms', 'objectoriented programming', 'dbms',
+  'operating systems', 'computer networks',
+  'artificial intelligence', 'machine learning', 'data science',
+  'pandas', 'numpy'
+];
+
+/**
+ * Common English stopwords and procedural phrasing boilerplate tokens.
+ * Stripped during semantic content comparison to prevent procedural framing from skewing similarity.
+ */
+const STOP_AND_FRAME_WORDS = new Set([
+  'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and',
+  'any', 'are', 'arent', 'as', 'at', 'be', 'because', 'been', 'before', 'being',
+  'below', 'between', 'both', 'but', 'by', 'can', 'cannot', 'could', 'did', 'do',
+  'does', 'doing', 'down', 'during', 'each', 'few', 'for', 'from', 'further',
+  'had', 'has', 'have', 'having', 'he', 'her', 'here', 'hers', 'herself', 'him',
+  'himself', 'his', 'how', 'i', 'if', 'in', 'into', 'is', 'it', 'its', 'itself',
+  'let', 'me', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off',
+  'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out',
+  'over', 'own', 'same', 'she', 'should', 'so', 'some', 'such', 'than', 'that',
+  'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'these', 'they',
+  'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was',
+  'we', 'were', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why',
+  'with', 'would', 'you', 'your', 'yours', 'yourself', 'yourselves',
+  // Common procedural question frames
+  'consider', 'following', 'approach', 'pattern', 'implemented', 'implementing',
+  'utilizing', 'utilize', 'using', 'built', 'purpose', 'primary', 'statement',
+  'explain', 'describe', 'difference', 'distinction', 'best', 'effective',
+  'code', 'snippet', 'output', 'expected', 'expectedtimeseconds'
+]);
+
+/**
  * Normalizes question text for robust deduplication.
  * Strips punctuation, collapses whitespace, converts to lowercase.
  */
@@ -41,6 +79,15 @@ export function normalizeQuestionText(text = '') {
     .replace(/[^\w\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Extracts substantive technical content tokens, omitting grammatical and procedural boilerplate.
+ */
+export function extractContentTokens(text = '') {
+  const norm = normalizeQuestionText(text);
+  if (!norm) return [];
+  return norm.split(' ').filter(token => token.length > 1 && !STOP_AND_FRAME_WORDS.has(token));
 }
 
 /**
@@ -65,43 +112,151 @@ export function calculateTokenSimilarity(textA = '', textB = '') {
 }
 
 /**
+ * Calculates semantic content token Jaccard similarity between two texts.
+ */
+export function calculateContentSimilarity(textA = '', textB = '') {
+  const tokensA = new Set(extractContentTokens(textA));
+  const tokensB = new Set(extractContentTokens(textB));
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of tokensA) {
+    if (tokensB.has(token)) intersection++;
+  }
+  const union = new Set([...tokensA, ...tokensB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/**
+ * Extracts recognized platform technical skills from a normalized text.
+ * Uses exact token boundaries to prevent single-letter languages (like 'c') from matching substrings.
+ */
+function extractSkillsFromText(norm = '') {
+  if (!norm) return new Set();
+  const words = new Set(norm.split(' ').filter(Boolean));
+  const detected = new Set();
+
+  for (const sk of KNOWN_SKILLS) {
+    const cleanSk = sk.replace(/[^\w\s]/g, '').trim();
+    if (cleanSk.includes(' ')) {
+      if (norm.includes(cleanSk)) detected.add(cleanSk);
+    } else {
+      if (words.has(cleanSk)) detected.add(cleanSk);
+    }
+  }
+  return detected;
+}
+
+/**
+ * Checks whether two texts are explicitly addressing different recognized technical domains.
+ */
+function detectDifferentSkillsFromText(normA = '', normB = '') {
+  const skillsA = extractSkillsFromText(normA);
+  const skillsB = extractSkillsFromText(normB);
+
+  // If both texts explicitly reference known skills
+  if (skillsA.size > 0 && skillsB.size > 0) {
+    // Check if there is any overlap
+    for (const skA of skillsA) {
+      if (skillsB.has(skA)) {
+        return false; // They share at least one skill
+      }
+    }
+    // No shared skills: they are about different skills
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Checks whether a candidate question is an exact duplicate or near-duplicate
  * of any question in an existing list.
+ *
+ * Avoids false positives across different skills/categories/modes and procedural frames.
  */
 export function isDuplicateOrNearDuplicate(candidate, existingList = [], threshold = 0.75) {
-  const candidateText = typeof candidate === 'string' ? candidate : candidate?.question || candidate?.problemStatement || '';
+  if (!candidate || !Array.isArray(existingList) || existingList.length === 0) return false;
+
+  const candidateText = typeof candidate === 'string'
+    ? candidate
+    : candidate?.question || candidate?.problemStatement || '';
   const normCandidate = normalizeQuestionText(candidateText);
   if (!normCandidate) return false;
+
+  const candSkill = typeof candidate === 'object'
+    ? normalizeQuestionText(candidate?.skill || candidate?.requirementRef || candidate?.topic || '')
+    : '';
+  const candCat = typeof candidate === 'object'
+    ? normalizeQuestionText(candidate?.category || '')
+    : '';
+  const candMode = typeof candidate === 'object' ? candidate?.mode : null;
 
   const candidateSnippet = typeof candidate === 'object' && candidate?.codeSnippet
     ? normalizeQuestionText(candidate.codeSnippet)
     : '';
 
   for (const item of existingList) {
-    const existingText = typeof item === 'string' ? item : item?.question || item?.problemStatement || '';
-    const normExisting = normalizeQuestionText(existingText);
-    if (!normExisting) continue;
+    if (!item) continue;
 
-    // 1. Exact normalized text match
-    if (normCandidate === normExisting) return true;
+    // 1. If both are objects, enforce skill/category/mode boundary checks
+    if (typeof candidate === 'object' && typeof item === 'object') {
+      const itemSkill = normalizeQuestionText(item?.skill || item?.requirementRef || item?.topic || '');
+      if (candSkill && itemSkill && candSkill !== itemSkill) {
+        // Different skills are never duplicates
+        continue;
+      }
 
-    // 2. Token overlap similarity check
-    const sim = calculateTokenSimilarity(normCandidate, normExisting);
-    if (sim >= threshold) return true;
+      const itemCat = normalizeQuestionText(item?.category || '');
+      if (candCat && itemCat && candCat !== itemCat && (!candSkill || candSkill !== itemSkill)) {
+        // Different categories with different skills are not duplicates
+        continue;
+      }
 
-    // 3. Substring containment for substantial prompts (>= 25 characters)
-    if (normCandidate.length >= 25 && normExisting.length >= 25) {
-      if (normCandidate.includes(normExisting) || normExisting.includes(normCandidate)) {
-        const ratio = Math.min(normCandidate.length, normExisting.length) / Math.max(normCandidate.length, normExisting.length);
-        if (ratio >= 0.75) return true;
+      const itemMode = item?.mode;
+      if (candMode && itemMode && candMode !== itemMode) {
+        // MCQ vs Coding Challenge are never duplicates
+        continue;
       }
     }
 
-    // 4. Duplicate code snippet with identical question intent
+    const existingText = typeof item === 'string'
+      ? item
+      : item?.question || item?.problemStatement || '';
+    const normExisting = normalizeQuestionText(existingText);
+    if (!normExisting) continue;
+
+    // 2. Exact normalized text match within the same topic
+    if (normCandidate === normExisting) return true;
+
+    // 3. Text-level check for mutually exclusive known technical skills
+    if (detectDifferentSkillsFromText(normCandidate, normExisting)) {
+      continue;
+    }
+
+    // 4. Duplicate code snippet with high similarity
     if (candidateSnippet && typeof item === 'object' && item?.codeSnippet) {
       const existingSnippet = normalizeQuestionText(item.codeSnippet);
       if (candidateSnippet === existingSnippet && candidateSnippet.length > 20) {
-        if (sim >= 0.50) return true;
+        const rawSim = calculateTokenSimilarity(normCandidate, normExisting);
+        if (rawSim >= 0.50) return true;
+      }
+    }
+
+    // 5. Semantic content & raw token similarity
+    const rawSim = calculateTokenSimilarity(normCandidate, normExisting);
+    const contentSim = calculateContentSimilarity(normCandidate, normExisting);
+
+    // Near-identical question intent within the same topic
+    if (contentSim >= 0.85 && rawSim >= 0.75) return true;
+    if (contentSim >= 0.75 && rawSim >= 0.85) return true;
+    if (rawSim >= 0.95) return true;
+
+    // 6. Substring containment with strict length ratio and content similarity
+    if (normCandidate.length >= 35 && normExisting.length >= 35) {
+      if (normCandidate.includes(normExisting) || normExisting.includes(normCandidate)) {
+        const ratio = Math.min(normCandidate.length, normExisting.length) / Math.max(normCandidate.length, normExisting.length);
+        if (ratio >= 0.85 && contentSim >= 0.75) return true;
       }
     }
   }
@@ -137,104 +292,12 @@ export function validateQuestionFormat(q) {
 }
 
 /**
- * Safely evaluates user solution against test cases in an isolated Node vm sandbox.
+ * Safely evaluates user solution against test cases in an isolated execution sandbox.
+ * Re-exports the unified multi-language execution engine.
  */
-export function evaluateCodingSolution(userCode = '', testCases = []) {
-  if (!userCode || !Array.isArray(testCases) || testCases.length === 0) {
-    return {
-      allPassed: false,
-      results: [],
-      failureReason: 'No code or test cases provided for validation'
-    };
-  }
+export { evaluateCodingSolution };
 
-  const results = [];
-  let allPassed = true;
 
-  for (let i = 0; i < testCases.length; i++) {
-    const tc = testCases[i];
-    let passed = false;
-    let actualOutput = '';
-    let errorMessage = null;
-
-    try {
-      const sandbox = {
-        console: { log: () => {} },
-        result: undefined
-      };
-      vm.createContext(sandbox);
-
-      const runnerCode = `
-        ${userCode}
-        (function() {
-          let parsedInput;
-          try {
-            parsedInput = JSON.parse(${JSON.stringify(tc.input)});
-          } catch(e) {
-            parsedInput = ${JSON.stringify(tc.input)};
-          }
-          
-          let targetFn = null;
-          for (const key of Object.keys(this)) {
-            if (typeof this[key] === 'function' && key !== 'eval' && key !== 'Function') {
-              targetFn = this[key];
-            }
-          }
-          
-          if (typeof targetFn === 'function') {
-            if (typeof parsedInput === 'object' && parsedInput !== null && !Array.isArray(parsedInput)) {
-              result = targetFn(...Object.values(parsedInput));
-            } else {
-              result = targetFn(parsedInput);
-            }
-          } else {
-            result = eval(${JSON.stringify(userCode)});
-          }
-        })();
-      `;
-
-      const script = new vm.Script(runnerCode);
-      script.runInContext(sandbox, { timeout: 1500 });
-
-      actualOutput = JSON.stringify(sandbox.result);
-      const expectedNormalized = String(tc.expectedOutput).trim();
-
-      if (
-        actualOutput === expectedNormalized ||
-        String(sandbox.result).trim() === expectedNormalized ||
-        (expectedNormalized === 'MATCH_QUERY' && /select\s+/i.test(userCode))
-      ) {
-        passed = true;
-      } else {
-        allPassed = false;
-      }
-    } catch (err) {
-      allPassed = false;
-      errorMessage = err.message;
-      actualOutput = `Error: ${err.message}`;
-    }
-
-    results.push({
-      testCaseIndex: i + 1,
-      input: tc.input,
-      expected: tc.expectedOutput,
-      actual: actualOutput,
-      passed,
-      error: errorMessage
-    });
-  }
-
-  const failedCase = results.find(r => !r.passed);
-  const failureReason = failedCase
-    ? `Test Case ${failedCase.testCaseIndex} failed: Expected ${failedCase.expected}, but received ${failedCase.actual}`
-    : null;
-
-  return {
-    allPassed,
-    results,
-    failureReason
-  };
-}
 
 /**
  * Filters and selects distinct questions for a quiz or test session.
@@ -640,6 +703,118 @@ function createProceduralVariations(skill, difficulty = 'medium') {
       explanation: 'I/O-bound services bottleneck on thread queues or network latency long before exhausting CPU cores, making queue depth the true leading indicator.',
       difficulty: 'hard',
       expectedTimeSeconds: 50
+    },
+    {
+      type: 'mcq',
+      question: 'When declaring variables in modern ' + skill + ', why is block-scoping preferred over function-scoping or implicit globals?',
+      options: [
+        'Block-scoping confines variable lifetime to the immediate code block, preventing accidental overwriting and variable hoisting bugs.',
+        'Block-scoped variables consume zero bytes in RAM.',
+        'Implicit globals execute faster in the CPU cache.',
+        'Function-scoping disables unit testing.'
+      ],
+      correctAnswer: 'Block-scoping confines variable lifetime to the immediate code block, preventing accidental overwriting and variable hoisting bugs.',
+      explanation: 'Block scoping limits variable exposure to the smallest enclosing block, preventing leakage and shadowing side effects in ' + skill + '.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 35
+    },
+    {
+      type: 'code_reading',
+      question: 'In conditional expressions written in ' + skill + ', why is strict comparison preferred over loose type-coercing comparison?',
+      options: [
+        'Strict comparison validates both type and value identity, avoiding unexpected implicit type coercion anomalies.',
+        'Strict comparison converts all data types to floating-point numbers.',
+        'Loose comparison is not supported by standard compilers.',
+        'Strict comparison eliminates the need for unit tests.'
+      ],
+      correctAnswer: 'Strict comparison validates both type and value identity, avoiding unexpected implicit type coercion anomalies.',
+      explanation: 'Strict equality ensures deterministic comparison by verifying that both operands share the same type before comparing values.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 35
+    },
+    {
+      type: 'debugging',
+      question: 'When managing external resource cleanup in ' + skill + ', why is the finally block essential in try-catch-finally control flows?',
+      options: [
+        'The finally block executes unconditionally regardless of whether an exception was thrown or caught, guaranteeing resource disposal.',
+        'Code inside finally blocks runs before any try statements.',
+        'The finally block suppresses all compiler warnings.',
+        'The finally block automatically restarts the operating system.'
+      ],
+      correctAnswer: 'The finally block executes unconditionally regardless of whether an exception was thrown or caught, guaranteeing resource disposal.',
+      explanation: 'Guaranteed execution in finally blocks ensures open file descriptors, sockets, or lock handles are always released even during errors.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'mcq',
+      question: 'What is the defining characteristic of a pure function when writing modular routines in ' + skill + '?',
+      options: [
+        'Given the same arguments, it always returns the same output without causing observable external side effects.',
+        'It must contain at least 100 lines of executable code.',
+        'It must perform direct asynchronous database modifications.',
+        'It can only be executed once during the application lifetime.'
+      ],
+      correctAnswer: 'Given the same arguments, it always returns the same output without causing observable external side effects.',
+      explanation: 'Purity ensures determinism and testability because output depends strictly on input parameters with no mutation of shared state.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 35
+    },
+    {
+      type: 'output_prediction',
+      question: 'What is the standard convention for zero-based collection indexing when accessing array elements in ' + skill + '?',
+      options: [
+        'The first element is accessed at index 0, and the final element is at index (length - 1).',
+        'The first element is at index 1, and the final element is at index (length + 1).',
+        'Negative indices always cause immediate system kernel crashes.',
+        'Indices must always be formatted as hexadecimal strings.'
+      ],
+      correctAnswer: 'The first element is accessed at index 0, and the final element is at index (length - 1).',
+      explanation: 'Zero-based indexing represents the offset distance from the memory pointer of the array beginning in standard architectures.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 30
+    },
+    {
+      type: 'mcq',
+      question: 'What is the primary operational advantage of non-blocking asynchronous operations compared to synchronous operations in ' + skill + '?',
+      options: [
+        'Non-blocking I/O allows the thread to continue processing concurrent tasks while waiting for external network or disk responses.',
+        'Synchronous code runs at twice the CPU clock frequency.',
+        'Asynchronous code bypasses all network security firewalls.',
+        'Non-blocking operations delete compiled binaries from disk.'
+      ],
+      correctAnswer: 'Non-blocking I/O allows the thread to continue processing concurrent tasks while waiting for external network or disk responses.',
+      explanation: 'Asynchronous execution prevents worker threads from idling during I/O waits, vastly increasing overall server concurrency.',
+      difficulty: 'easy',
+      expectedTimeSeconds: 40
+    },
+    {
+      type: 'scenario',
+      question: 'When diagnosing cross-boundary latency in distributed microservices using ' + skill + ', how does OpenTelemetry trace context propagation work?',
+      options: [
+        'Injecting standardized W3C traceparent headers containing trace-id and span-id across outbound HTTP/gRPC requests.',
+        'Writing all network packets to a shared USB flash drive.',
+        'Executing a full memory dump on every incoming HTTP GET request.',
+        'Relying on physical server serial numbers.'
+      ],
+      correctAnswer: 'Injecting standardized W3C traceparent headers containing trace-id and span-id across outbound HTTP/gRPC requests.',
+      explanation: 'Trace headers allow distributed telemetry backends to stitch disparate spans into a coherent end-to-end request timeline.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
+    },
+    {
+      type: 'debugging',
+      question: 'In high-contention database updates with ' + skill + ', how does Optimistic Concurrency Control (OCC) prevent lost updates without heavy locks?',
+      options: [
+        'Updating rows with a version counter condition (WHERE id = ? AND version = ?) and rolling back/retrying if 0 rows were updated.',
+        'Locking the entire database table exclusively for 10 minutes per write.',
+        'Ignoring conflicting concurrent writes and accepting whichever arrived last.',
+        'Disabling all database indexes during write queries.'
+      ],
+      correctAnswer: 'Updating rows with a version counter condition (WHERE id = ? AND version = ?) and rolling back/retrying if 0 rows were updated.',
+      explanation: 'Version checks ensure records have not changed since reading; conflicting writes fail cleanly and retry without blocking reads.',
+      difficulty: 'hard',
+      expectedTimeSeconds: 50
     }
   ];
 }
@@ -805,6 +980,65 @@ export function generateCuratedQuestions({
 }
 
 /**
+ * Normalizes compound or roadmap topic names into canonical practice bank skills.
+ */
+export function resolvePracticeSkill(rawSkill) {
+  if (!rawSkill || typeof rawSkill !== 'string') return 'JavaScript';
+  const clean = rawSkill.trim();
+
+  // If already directly present in Curated MCQ Bank
+  if (CURATED_MCQ_BANK[clean]) return clean;
+
+  const lower = clean.toLowerCase();
+
+  if (lower.includes('html')) return 'HTML';
+  if (lower.includes('css')) return 'CSS';
+  if (lower.includes('react')) return 'React';
+  if (lower.includes('node')) return 'Node.js';
+  if (lower.includes('express')) return 'Express.js';
+  if (lower.includes('fastapi')) return 'FastAPI';
+  if (lower.includes('sql') || lower.includes('database') || lower.includes('postgres') || lower.includes('mysql') || lower.includes('dbms')) return 'SQL';
+  if (lower.includes('mongo')) return 'MongoDB';
+  if (lower.includes('javascript') || lower.includes('js')) return 'JavaScript';
+  if (lower.includes('typescript') || lower.includes('ts')) return 'TypeScript';
+  if (lower.includes('python')) return 'Python';
+  if (lower.includes('java') && !lower.includes('script')) return 'Java';
+  if (lower.includes('c++') || lower.includes('cpp')) return 'C++';
+  if (lower === 'c' || lower.startsWith('c language')) return 'C';
+  if (lower.includes('algorithm') || lower.includes('data structure') || lower.includes('dsa')) return 'Data Structures & Algorithms';
+  if (lower.includes('oop') || lower.includes('object-oriented')) return 'Object-Oriented Programming';
+  if (lower.includes('operating system') || lower.includes('os concepts')) return 'Operating Systems';
+  if (lower.includes('network') || lower.includes('http') || lower.includes('rest')) return 'Computer Networks';
+  if (lower.includes('machine learning') || lower.includes('ml')) return 'Machine Learning';
+  if (lower.includes('data science')) return 'Data Science';
+  if (lower.includes('pandas')) return 'Pandas';
+  if (lower.includes('numpy')) return 'NumPy';
+  if (lower.includes('ai') || lower.includes('intelligence')) return 'Artificial Intelligence';
+
+  return clean;
+}
+
+/**
+ * Resolves the underlying executable coding challenge language for any skill/topic.
+ */
+export function resolveCodingChallengeLanguage(skill) {
+  const resolved = resolvePracticeSkill(skill);
+  if (['HTML', 'CSS', 'React', 'Node.js', 'Express.js', 'JavaScript'].includes(resolved)) {
+    return 'JavaScript';
+  }
+  if (['SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'DBMS'].includes(resolved)) {
+    return 'SQL';
+  }
+  if (['Python', 'Pandas', 'NumPy', 'Data Science', 'Machine Learning', 'Artificial Intelligence'].includes(resolved)) {
+    return 'Python';
+  }
+  if (['Java', 'C', 'C++', 'TypeScript'].includes(resolved)) {
+    return resolved;
+  }
+  return 'JavaScript';
+}
+
+/**
  * Generates targeted practice questions matching user-selected category, skill, difficulty, count, and mode.
  */
 export async function generateTargetedPracticeQuestions({
@@ -823,8 +1057,9 @@ export async function generateTargetedPracticeQuestions({
   const requestedCount = Math.max(1, Math.min(20, count));
 
   if (mode === 'coding_challenges') {
+    const codingLang = resolveCodingChallengeLanguage(normSkill);
     const candidates = [];
-    const curated = CURATED_CODING_CHALLENGES[normSkill] || [];
+    const curated = CURATED_CODING_CHALLENGES[codingLang] || CURATED_CODING_CHALLENGES['JavaScript'] || [];
     for (const c of curated) {
       candidates.push({
         firebaseUid,
@@ -843,7 +1078,7 @@ export async function generateTargetedPracticeQuestions({
         options: [],
         correctAnswer: c.referenceSolution || '',
         referenceSolution: c.referenceSolution || '',
-        explanation: `Coding challenge covering ${normSkill}.`,
+        explanation: `Coding challenge covering ${normSkill} (${codingLang}).`,
         difficulty: c.difficulty || targetDiff,
         skill: normSkill,
         requirementRef: normSkill,
@@ -852,7 +1087,7 @@ export async function generateTargetedPracticeQuestions({
     }
 
     for (let procIndex = 1; procIndex <= 25; procIndex++) {
-      const generated = generateProceduralCodingChallenge(normSkill, targetDiff, procIndex);
+      const generated = generateProceduralCodingChallenge(codingLang, targetDiff, procIndex);
       candidates.push({
         ...generated,
         firebaseUid,
@@ -880,8 +1115,9 @@ export async function generateTargetedPracticeQuestions({
 
   // MCQ Mode
   const candidatePool = [];
+  const mcqSkill = resolvePracticeSkill(normSkill);
 
-  const bankItems = CURATED_MCQ_BANK[normSkill] || [];
+  const bankItems = CURATED_MCQ_BANK[mcqSkill] || CURATED_MCQ_BANK[normSkill] || [];
   for (const item of bankItems) {
     candidatePool.push({
       firebaseUid,

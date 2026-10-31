@@ -6,7 +6,9 @@ import {
   evaluateCodingSolution,
   validateQuestionFormat,
   CURATED_CODING_CHALLENGES,
-  CURATED_MCQ_BANK
+  CURATED_MCQ_BANK,
+  resolvePracticeSkill,
+  resolveCodingChallengeLanguage
 } from '../src/services/practice.service.js';
 import { revealQuestionSolution } from '../src/controllers/practice.controller.js';
 import { PracticeAttempt } from '../src/models/practiceAttempt.model.js';
@@ -91,7 +93,7 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
       }
     });
 
-    it('evaluates correct JavaScript code solution and passes all test cases', () => {
+    it('evaluates correct JavaScript code solution and passes all test cases', async () => {
       const userCode = `
         function twoSum(nums, target) {
           const map = new Map();
@@ -109,14 +111,14 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
         { input: JSON.stringify({ nums: [3, 2, 4], target: 6 }), expectedOutput: JSON.stringify([1, 2]) }
       ];
 
-      const result = evaluateCodingSolution(userCode, testCases);
+      const result = await evaluateCodingSolution(userCode, testCases);
       expect(result.allPassed).toBe(true);
       expect(result.results.length).toBe(2);
       expect(result.results[0].passed).toBe(true);
       expect(result.results[1].passed).toBe(true);
     });
 
-    it('evaluates incorrect code and identifies the failing test case with clear feedback', () => {
+    it('evaluates incorrect code and identifies the failing test case with clear feedback', async () => {
       const wrongCode = `
         function twoSum(nums, target) {
           return [0, 0];
@@ -127,7 +129,7 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
         { input: JSON.stringify({ nums: [2, 7, 11, 15], target: 9 }), expectedOutput: JSON.stringify([0, 1]) }
       ];
 
-      const result = evaluateCodingSolution(wrongCode, testCases);
+      const result = await evaluateCodingSolution(wrongCode, testCases);
       expect(result.allPassed).toBe(false);
       expect(result.failureReason).toContain('Test Case 1 failed');
     });
@@ -394,6 +396,58 @@ describe('HireMate Nexus Core Features & Bug Fix Tests', () => {
         success: false,
         error: expect.objectContaining({ code: 'SOLUTION_LOCKED' })
       }));
+    });
+
+    it('generates role-specific roadmap for Full Stack Developer structuring HTML, CSS, JS, React, Node, SQL', () => {
+      const plan = generateRoadmapPlan({
+        userAvailableDays: 10,
+        dailyPreparationMinutes: 60,
+        requirementsResults: [],
+        jobTitle: 'Full Stack Developer',
+        jobDescription: 'Seeking a Full Stack Developer experienced with web applications, front-end and back-end engineering.'
+      });
+
+      expect(plan.totalDays).toBe(10);
+      expect(plan.tasks.length).toBeGreaterThanOrEqual(10);
+
+      const allTopics = plan.tasks.map(t => t.topic.toLowerCase()).join(' ');
+      expect(allTopics).toContain('html');
+      expect(allTopics).toContain('css');
+      expect(allTopics).toContain('javascript');
+      expect(allTopics).toContain('react');
+      expect(allTopics).toContain('node');
+      expect(allTopics).toContain('sql');
+    });
+
+    it('resolves roadmap compound topics to canonical practice skills and coding languages accurately', async () => {
+      expect(resolvePracticeSkill('HTML & Modern CSS')).toBe('HTML');
+      expect(resolvePracticeSkill('React Components & Hooks')).toBe('React');
+      expect(resolvePracticeSkill('Node.js & Express Framework')).toBe('Node.js');
+      expect(resolvePracticeSkill('Databases & SQL Queries')).toBe('SQL');
+      expect(resolvePracticeSkill('JavaScript (ES6+)')).toBe('JavaScript');
+      expect(resolvePracticeSkill('Pandas & NumPy Analysis')).toBe('Pandas');
+
+      // Executable coding challenge language resolution
+      expect(resolveCodingChallengeLanguage('HTML & Modern CSS')).toBe('JavaScript');
+      expect(resolveCodingChallengeLanguage('React Components & Hooks')).toBe('JavaScript');
+      expect(resolveCodingChallengeLanguage('Node.js & Express Framework')).toBe('JavaScript');
+      expect(resolveCodingChallengeLanguage('Databases & SQL Queries')).toBe('SQL');
+      expect(resolveCodingChallengeLanguage('Machine Learning Pipelines')).toBe('Python');
+
+      // Generate questions for a roadmap topic
+      const roadmapQuestions = await generateTargetedPracticeQuestions({
+        applicationId: 'mock_app_roadmap',
+        firebaseUid: 'mock_user_roadmap',
+        category: 'Roadmap Topics',
+        skill: 'React Components & Hooks',
+        difficulty: 'medium',
+        count: 5,
+        mode: 'mcq'
+      });
+
+      expect(roadmapQuestions.length).toBe(5);
+      expect(roadmapQuestions[0].options.length).toBeGreaterThanOrEqual(2);
+      expect(roadmapQuestions[0].correctAnswer).toBeDefined();
     });
   });
 });

@@ -163,7 +163,7 @@ export default function CompanyResearchPage() {
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50 shrink-0"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50 shrink-0"
           >
             <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
             <span>{generating ? 'Conducting Grounded Research...' : 'Refresh Research Hub'}</span>
@@ -179,7 +179,7 @@ export default function CompanyResearchPage() {
         {/* Empty State */}
         {!research && !loading && (
           <div className="p-12 text-center rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] max-w-lg mx-auto shadow-sm space-y-4">
-            <Building2 size={40} className="text-indigo-600 mx-auto" />
+            <Building2 size={40} className="text-blue-600 mx-auto" />
             <h3 className="font-extrabold text-lg">No Company Intelligence Loaded</h3>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
               Generate a comprehensive company research dossier covering overview, products, tech stack, leadership, culture, careers, and financial position.
@@ -187,7 +187,7 @@ export default function CompanyResearchPage() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow hover:shadow-indigo-500/20"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow hover:shadow-blue-500/20"
             >
               Build Research Hub for {app?.companyName || 'Company'}
             </button>
@@ -206,12 +206,12 @@ export default function CompanyResearchPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
+                  <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
                     {reviewedCount} of {totalSections} Sections Reviewed ({reviewProgressPct}%)
                   </span>
                   <Link
                     to={`/app/${applicationId}/checklist`}
-                    className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline"
                   >
                     <span>Readiness Score</span>
                     <ArrowRight size={12} />
@@ -222,7 +222,7 @@ export default function CompanyResearchPage() {
               {/* Visual Progress Bar */}
               <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 via-indigo-600 to-emerald-500 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 rounded-full transition-all duration-500"
                   style={{ width: `${reviewProgressPct}%` }}
                 />
               </div>
@@ -267,13 +267,13 @@ export default function CompanyResearchPage() {
                     onClick={() => setActiveSection(sec.id)}
                     className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                       isActive
-                        ? 'bg-indigo-600 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] hover:border-slate-400 hover:text-[var(--text-primary)]'
                     }`}
                   >
                     <Icon size={14} />
                     <span>{sec.title}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isActive ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)]'}`}>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)]'}`}>
                       {count}
                     </span>
                   </button>
@@ -296,7 +296,7 @@ export default function CompanyResearchPage() {
                     {/* Section Header with Icon, Description, and Review Action */}
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900">
                           <Icon size={20} />
                         </div>
                         <div>
@@ -337,7 +337,7 @@ export default function CompanyResearchPage() {
                         {items.map((item, idx) => (
                           <div
                             key={idx}
-                            className="p-4 sm:p-5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] space-y-3 hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors flex flex-col justify-between"
+                            className="p-4 sm:p-5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border-subtle)] space-y-3 hover:border-blue-200 dark:hover:border-blue-900 transition-colors flex flex-col justify-between"
                           >
                             <div className="space-y-2">
                               <div className="flex justify-between items-center">
@@ -366,7 +366,7 @@ export default function CompanyResearchPage() {
                                   href={item.sourceUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                                  className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline"
                                 >
                                   <span>Official Information Citation</span>
                                   <ExternalLink size={12} />

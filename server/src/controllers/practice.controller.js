@@ -60,36 +60,45 @@ export async function generatePracticeQuestions(req, res) {
     ]);
     const servedOrAttemptedIds = Array.from(servedOrAttemptedIdSet);
 
+    // Scope served question texts to the specific skill and mode being evaluated
     const servedOrAttemptedQuestionsTexts = existingDocs
       .filter(q => servedOrAttemptedIdSet.has(String(q._id)))
+      .filter(q => (q.skill === rawSkill || q.requirementRef === rawSkill) && (q.mode || 'mcq') === mode)
       .map(q => q.question || q.problemStatement);
 
-    // 3. Find unattempted and unserved questions matching skill, mode, and target difficulty
+    // 3. Find unattempted and unserved questions matching skill and mode
     let matchingUnattempted = existingDocs.filter(q =>
       !servedOrAttemptedIdSet.has(String(q._id)) &&
       (q.skill === rawSkill || q.requirementRef === rawSkill) &&
-      (q.mode || 'mcq') === mode &&
-      (!difficulty || q.difficulty === difficulty)
+      (q.mode || 'mcq') === mode
     );
 
+    const matchingWithTargetDiff = matchingUnattempted.filter(q => q.difficulty === difficulty);
+
     // 4. If fewer than requested count exist, generate targeted questions with a generous candidate pool
-    if (matchingUnattempted.length < count) {
+    if (matchingUnattempted.length < count || matchingWithTargetDiff.length < count) {
+      const neededPool = Math.max(count * 2, 25);
+      const skillExisting = existingDocs.filter(q =>
+        (q.skill === rawSkill || q.requirementRef === rawSkill) &&
+        (q.mode || 'mcq') === mode
+      );
+
       const targeted = await generateTargetedPracticeQuestions({
         applicationId,
         firebaseUid: req.user.uid,
         category: rawCategory,
         skill: rawSkill,
         difficulty,
-        count: Math.max(count * 2, 10),
+        count: neededPool,
         mode,
-        existingQuestions: existingDocs,
+        existingQuestions: skillExisting,
         excludeIds: servedOrAttemptedIds
       });
 
       // Insert only genuinely non-duplicate questions
       const toInsert = [];
       for (const cand of targeted) {
-        if (!isDuplicateOrNearDuplicate(cand, existingDocs) && !isDuplicateOrNearDuplicate(cand, toInsert)) {
+        if (!isDuplicateOrNearDuplicate(cand, skillExisting) && !isDuplicateOrNearDuplicate(cand, toInsert)) {
           toInsert.push(cand);
         }
       }
@@ -178,7 +187,10 @@ export async function generatePracticeQuestions(req, res) {
 export async function getPracticeQuestions(req, res) {
   try {
     const { applicationId } = req.params;
-    const { skill, mode } = req.query;
+    const { skill, mode, difficulty, count } = req.query;
+
+    const reqCount = count ? Math.max(1, Math.min(20, parseInt(count, 10) || 10)) : 10;
+    const mappedDiff = difficulty ? (DIFFICULTY_MAP[difficulty] || difficulty) : null;
 
     // Fetch all attempted question IDs for this user & application
     const attempts = await PracticeAttempt.find({
@@ -198,6 +210,9 @@ export async function getPracticeQuestions(req, res) {
     }
     if (mode) {
       filter.mode = mode;
+    }
+    if (mappedDiff) {
+      filter.difficulty = mappedDiff;
     }
 
     // Fetch unattempted questions with correctAnswer and referenceSolution omitted
@@ -225,7 +240,7 @@ export async function getPracticeQuestions(req, res) {
       }
     }
 
-    const clientSafe = unattempted.slice(0, 20).map(q => {
+    const clientSafe = unattempted.slice(0, reqCount).map(q => {
       const obj = typeof q.toObject === 'function' ? q.toObject() : { ...q };
       delete obj.correctAnswer;
       delete obj.referenceSolution;
@@ -235,12 +250,13 @@ export async function getPracticeQuestions(req, res) {
     return res.status(200).json({
       success: true,
       data: clientSafe,
+      count: clientSafe.length,
       exhausted: unattempted.length === 0
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: { code: 'FETCH_ERROR', message: error.message }
+      error: { code: 'PRACTICE_FETCH_ERROR', message: error.message }
     });
   }
 }
@@ -268,7 +284,8 @@ export async function submitQuestionAttempt(req, res) {
     let testResults = null;
 
     if (question.mode === 'coding_challenges' || question.type === 'code_writing') {
-      const evalResult = evaluateCodingSolution(answer, question.testCases);
+      const language = req.body?.language || question.skill;
+      const evalResult = await evaluateCodingSolution(answer, question.testCases, language);
       isCorrect = evalResult.allPassed;
       testResults = evalResult.results;
       feedbackMessage = isCorrect

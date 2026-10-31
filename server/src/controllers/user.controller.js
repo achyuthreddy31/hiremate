@@ -1,5 +1,5 @@
-﻿import { User } from '../models/user.model.js';
-import { Application } from '../models/application.model.js';
+import { User } from '../models/user.model.js';
+import { performCompleteAccountDeletion } from '../services/accountDeletion.service.js';
 
 export async function getProfile(req, res) {
   try {
@@ -60,17 +60,15 @@ export async function upsertProfile(req, res) {
 export async function deleteAccount(req, res) {
   try {
     const uid = req.user.uid;
-    // Find all applications to cascade delete related models
-    const apps = await Application.find({ firebaseUid: uid });
-    const appIds = apps.map(a => a._id);
-
-    // Delete all user documents across all collections
-    await User.deleteMany({ firebaseUid: uid });
-    await Application.deleteMany({ firebaseUid: uid });
+    const result = await performCompleteAccountDeletion(uid);
 
     return res.status(200).json({
       success: true,
-      data: { message: 'All user account data deleted successfully.' }
+      data: {
+        message: 'All user account data deleted successfully across all associated collections.',
+        summary: result.deletionSummary,
+        totalDeleted: result.totalDeleted
+      }
     });
   } catch (error) {
     return res.status(500).json({

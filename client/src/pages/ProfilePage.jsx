@@ -133,7 +133,7 @@ export default function ProfilePage() {
     return (
       <AppLayout>
         <div className="max-w-3xl mx-auto h-64 flex flex-col items-center justify-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="text-xs text-[var(--text-muted)]">Loading candidate profile...</span>
         </div>
       </AppLayout>
@@ -164,9 +164,9 @@ export default function ProfilePage() {
         )}
 
         {/* Highlighted Profile & Account Session Card with Sign Out */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-indigo-50/40 to-slate-50 dark:from-indigo-950/40 dark:via-slate-900/80 dark:to-slate-900 border border-indigo-200/90 dark:border-indigo-800/70 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-blue-50/80 via-blue-50/40 to-slate-50 dark:from-blue-950/40 dark:via-slate-900/80 dark:to-slate-900 border border-blue-200/90 dark:border-blue-800/70 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white font-extrabold text-lg flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
               {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
             </div>
             <div>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <p className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5">
-                <Mail size={12} className="text-indigo-500" />
+                <Mail size={12} className="text-blue-500" />
                 <span>{currentUser?.email || profile.email || 'account@hiremate.ai'}</span>
               </p>
             </div>
@@ -212,7 +212,7 @@ export default function ProfilePage() {
                 value={profile.name || ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Candidate Full Name"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
             <div>
@@ -223,7 +223,7 @@ export default function ProfilePage() {
                 value={profile.email || ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="candidate@example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               />
             </div>
           </div>
@@ -233,7 +233,7 @@ export default function ProfilePage() {
             <select
               value={profile.currentLevel || 'beginner'}
               onChange={(e) => setProfile(prev => ({ ...prev, currentLevel: e.target.value }))}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
             >
               <option value="beginner">Beginner (Entry Level / Student)</option>
               <option value="intermediate">Intermediate (Mid Level / 2-5 Years)</option>
@@ -251,7 +251,7 @@ export default function ProfilePage() {
               value={skillsText}
               onChange={(e) => setSkillsText(e.target.value)}
               placeholder="e.g. JavaScript, React, Node.js, Docker, Python, MongoDB"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
             />
           </div>
 
@@ -263,7 +263,7 @@ export default function ProfilePage() {
                 value={profile.links?.github || ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, links: { ...(prev.links || defaultLinks), github: e.target.value } }))}
                 placeholder="https://github.com/username"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -273,7 +273,7 @@ export default function ProfilePage() {
                 value={profile.links?.linkedin || ''}
                 onChange={(e) => setProfile(prev => ({ ...prev, links: { ...(prev.links || defaultLinks), linkedin: e.target.value } }))}
                 placeholder="https://linkedin.com/in/username"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -282,7 +282,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
             >
               <Save size={16} />
               <span>{saving ? 'Saving Profile...' : 'Save Profile Changes'}</span>

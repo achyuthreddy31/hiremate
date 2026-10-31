@@ -1,4 +1,4 @@
-﻿import admin, { initializeFirebase } from '../config/firebase.js';
+import admin, { initializeFirebase } from '../config/firebase.js';
 
 initializeFirebase();
 
@@ -32,9 +32,25 @@ export async function requireAuth(req, res, next) {
       });
     }
 
-    // Support mock token in dev / test mode
-    if (token.startsWith('mock-token-') || token.startsWith('mock-uid-')) {
-      const mockUid = token.replace('mock-token-', '').replace('mock-uid-', '');
+    // Restrict mock authentication strictly to explicit development and test environments.
+    // Missing, undefined, empty, or unrecognized environments fail closed and reject mock tokens.
+    const isMockToken = token.startsWith('mock-token-') || token.startsWith('mock-uid-');
+    if (isMockToken) {
+      const currentEnv = typeof process.env.NODE_ENV === 'string' ? process.env.NODE_ENV.trim().toLowerCase() : '';
+      const isAllowedEnvironment = currentEnv === 'development' || currentEnv === 'test';
+
+      if (!isAllowedEnvironment) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: currentEnv === 'production'
+              ? 'Mock authentication tokens are not permitted in production environments.'
+              : 'Mock authentication tokens are permitted only in development and test environments.'
+          }
+        });
+      }
+      const mockUid = token.replace('mock-token-', '').replace('mock-uid-', '').trim();
       req.user = {
         uid: mockUid || 'mock_user_123',
         email: `${mockUid || 'mock'}@hiremate.ai`
@@ -45,6 +61,15 @@ export async function requireAuth(req, res, next) {
     // Verify live Firebase ID token
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
+      if (!decodedToken || !decodedToken.uid) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'Firebase token verification returned invalid identity payload'
+          }
+        });
+      }
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email

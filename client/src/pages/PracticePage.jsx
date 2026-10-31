@@ -80,6 +80,9 @@ export default function PracticePage() {
   const [codeAnswer, setCodeAnswer] = useState('');
   const [submissionResult, setSubmissionResult] = useState(null);
   const [performance, setPerformance] = useState([]);
+  const [roadmap, setRoadmap] = useState(null);
+  const [roadmapTasks, setRoadmapTasks] = useState([]);
+  const [activeRoadmapTask, setActiveRoadmapTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -89,9 +92,9 @@ export default function PracticePage() {
   const [isExhausted, setIsExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState('practice'); // 'practice' | 'performance'
 
-  // Dynamic Selection State
+  // Dynamic Selection State - Defaults to Roadmap Topics if available
   const [selectedCategory, setSelectedCategory] = useState('Programming Languages');
-  const [selectedSkill, setSelectedSkill] = useState('Python');
+  const [selectedSkill, setSelectedSkill] = useState('JavaScript');
   const [skillSearch, setSkillSearch] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('Intermediate');
   const [selectedCount, setSelectedCount] = useState(10);
@@ -108,31 +111,100 @@ export default function PracticePage() {
   // Synchronize available skills when category changes
   const handleCategoryChange = (newCat) => {
     setSelectedCategory(newCat);
-    const available = CATEGORIES_DATA[newCat] || [];
-    setSelectedSkill(available[0] || '');
+    const available = newCat === 'Roadmap Topics'
+      ? roadmapTasks.map(t => t.topic)
+      : (CATEGORIES_DATA[newCat] || []);
+    const newSkill = available[0] || '';
+    setSelectedSkill(newSkill);
     setSkillSearch('');
     setRevealedSolution(null);
     setSubmissionResult(null);
     setSelectedAnswer('');
+    setCurrentIndex(0);
+    handleStartSession(false, { category: newCat, skill: newSkill });
+  };
+
+  const handleSkillChange = (newSkill) => {
+    setSelectedSkill(newSkill);
+    setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
+    setCurrentIndex(0);
+    handleStartSession(false, { skill: newSkill });
+  };
+
+  const handleDifficultyChange = (newDiff) => {
+    setSelectedDifficulty(newDiff);
+    setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
+    setCurrentIndex(0);
+    handleStartSession(false, { difficulty: newDiff });
+  };
+
+  const handleCountChange = (newCount) => {
+    const parsed = Number(newCount);
+    setSelectedCount(parsed);
+    setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
+    setCurrentIndex(0);
+    handleStartSession(false, { count: parsed });
+  };
+
+  const handleModeChange = (newMode) => {
+    setSelectedMode(newMode);
+    setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
+    setCurrentIndex(0);
+    handleStartSession(false, { mode: newMode });
   };
 
   const fetchPracticeData = async () => {
     try {
-      const [appRes, qRes, perfRes] = await Promise.all([
+      const [appRes, perfRes, roadRes] = await Promise.all([
         apiClient.get(`/applications/${applicationId}`),
-        apiClient.get(`/practice/${applicationId}`).catch(() => ({ data: [] })),
-        apiClient.get(`/practice/performance/${applicationId}`).catch(() => ({ data: [] }))
+        apiClient.get(`/practice/performance/${applicationId}`).catch(() => ({ data: [] })),
+        apiClient.get(`/roadmap/${applicationId}`).catch(() => ({ data: null }))
       ]);
       setApp(appRes.data);
-      const fetchedQuestions = qRes.data || [];
-      setQuestions(fetchedQuestions);
-      setIsExhausted(!!qRes.exhausted && fetchedQuestions.length === 0);
       setPerformance(perfRes.data || []);
-      setRevealedSolution(null);
 
-      if (fetchedQuestions.length > 0) {
-        setCodeAnswer(fetchedQuestions[0].starterCode || '');
+      let catToUse = selectedCategory;
+      let skillToUse = selectedSkill;
+      let diffToUse = selectedDifficulty;
+
+      const loadedRoadmap = roadRes?.data;
+      if (loadedRoadmap && Array.isArray(loadedRoadmap.tasks) && loadedRoadmap.tasks.length > 0) {
+        setRoadmap(loadedRoadmap);
+        const tasks = loadedRoadmap.tasks;
+        setRoadmapTasks(tasks);
+
+        // Find the first uncompleted task, or the first task if all complete
+        const activeTask = tasks.find(t => t.status !== 'completed') || tasks[0];
+        setActiveRoadmapTask(activeTask);
+
+        // Default the practice experience to the active Roadmap Topic!
+        catToUse = 'Roadmap Topics';
+        skillToUse = activeTask.topic;
+        diffToUse = activeTask.difficulty === 'hard'
+          ? 'Advanced'
+          : (activeTask.difficulty === 'easy' ? 'Beginner' : 'Intermediate');
+
+        setSelectedCategory(catToUse);
+        setSelectedSkill(skillToUse);
+        setSelectedDifficulty(diffToUse);
       }
+
+      // Load session synchronized with initial filter selections
+      await handleStartSession(false, {
+        category: catToUse,
+        skill: skillToUse,
+        difficulty: diffToUse,
+        count: selectedCount,
+        mode: selectedMode
+      });
     } catch (err) {
       setError(err.message || 'Failed to load practice questions');
     } finally {
@@ -140,19 +212,29 @@ export default function PracticePage() {
     }
   };
 
-  const handleStartSession = async (reset = false) => {
+  const handleStartSession = async (reset = false, customParams = {}) => {
     setGenerating(true);
     setError('');
     setIsSessionComplete(false);
     setSessionHistory([]);
     setRevealedSolution(null);
+    setSubmissionResult(null);
+    setSelectedAnswer('');
+    setCurrentIndex(0);
+
+    const cat = customParams.category !== undefined ? customParams.category : selectedCategory;
+    const sk = customParams.skill !== undefined ? customParams.skill : selectedSkill;
+    const diff = customParams.difficulty !== undefined ? customParams.difficulty : selectedDifficulty;
+    const cnt = customParams.count !== undefined ? customParams.count : selectedCount;
+    const md = customParams.mode !== undefined ? customParams.mode : selectedMode;
+
     try {
       const payload = {
-        category: selectedCategory,
-        skill: selectedSkill,
-        difficulty: selectedDifficulty,
-        count: selectedCount,
-        mode: selectedMode,
+        category: cat,
+        skill: sk,
+        difficulty: diff,
+        count: cnt,
+        mode: md,
         reset
       };
 
@@ -170,6 +252,8 @@ export default function PracticePage() {
 
       if (generated.length > 0) {
         setCodeAnswer(generated[0].starterCode || '');
+      } else {
+        setCodeAnswer('');
       }
     } catch (err) {
       setError(err.message || 'Failed to generate practice session');
@@ -250,7 +334,9 @@ export default function PracticePage() {
     }
   };
 
-  const availableSkills = CATEGORIES_DATA[selectedCategory] || [];
+  const availableSkills = selectedCategory === 'Roadmap Topics'
+    ? roadmapTasks.map(t => t.topic)
+    : (CATEGORIES_DATA[selectedCategory] || []);
   const filteredSkills = availableSkills.filter(s =>
     s.toLowerCase().includes(skillSearch.toLowerCase())
   );
@@ -280,7 +366,7 @@ export default function PracticePage() {
           <button
             onClick={() => handleStartSession(false)}
             disabled={generating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={generating ? "animate-spin" : ""} />
             <span>{generating ? 'Configuring Session...' : 'Start Practice Session'}</span>
@@ -295,7 +381,7 @@ export default function PracticePage() {
 
         {/* Dynamic Selection Controls Panel */}
         <div className="p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-sm space-y-4">
-          <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400">
             Session Configuration & Parameters
           </div>
 
@@ -306,8 +392,11 @@ export default function PracticePage() {
               <select
                 value={selectedCategory}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 transition-colors"
               >
+                {roadmapTasks.length > 0 && (
+                  <option value="Roadmap Topics">Roadmap Topics ({roadmapTasks.length})</option>
+                )}
                 {Object.keys(CATEGORIES_DATA).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -317,19 +406,24 @@ export default function PracticePage() {
             {/* 2. Skill Dropdown (Synchronized with Category) */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">
-                Skill ({filteredSkills.length})
+                {selectedCategory === 'Roadmap Topics' ? 'Roadmap Topic' : `Skill (${filteredSkills.length})`}
               </label>
               <select
                 value={selectedSkill}
-                onChange={(e) => {
-                  setSelectedSkill(e.target.value);
-                  setRevealedSolution(null);
-                }}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+                onChange={(e) => handleSkillChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 transition-colors"
               >
-                {filteredSkills.map(sk => (
-                  <option key={sk} value={sk}>{sk}</option>
-                ))}
+                {selectedCategory === 'Roadmap Topics' ? (
+                  roadmapTasks.map((t) => (
+                    <option key={t._id || t.day} value={t.topic}>
+                      Day {t.day}: {t.topic} {t.status === 'completed' ? '✓ (Done)' : ''}
+                    </option>
+                  ))
+                ) : (
+                  filteredSkills.map(sk => (
+                    <option key={sk} value={sk}>{sk}</option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -338,8 +432,8 @@ export default function PracticePage() {
               <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Difficulty</label>
               <select
                 value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+                onChange={(e) => handleDifficultyChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 transition-colors"
               >
                 {DIFFICULTY_OPTIONS.map(d => (
                   <option key={d} value={d}>{d}</option>
@@ -352,8 +446,8 @@ export default function PracticePage() {
               <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Questions</label>
               <select
                 value={selectedCount}
-                onChange={(e) => setSelectedCount(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+                onChange={(e) => handleCountChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 transition-colors"
               >
                 {COUNT_OPTIONS.map(cnt => (
                   <option key={cnt} value={cnt}>{cnt} Questions</option>
@@ -366,11 +460,8 @@ export default function PracticePage() {
               <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Practice Mode</label>
               <select
                 value={selectedMode}
-                onChange={(e) => {
-                  setSelectedMode(e.target.value);
-                  setRevealedSolution(null);
-                }}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-indigo-600 transition-colors"
+                onChange={(e) => handleModeChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-primary)] border border-[var(--border-subtle)] focus:outline-none focus:border-blue-600 transition-colors"
               >
                 {MODE_OPTIONS.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -392,7 +483,7 @@ export default function PracticePage() {
             <button
               onClick={() => handleStartSession(false)}
               disabled={generating}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
             >
               <Play size={14} className={generating ? "animate-spin" : ""} />
               <span>{generating ? 'Configuring Session...' : `Start ${selectedSkill} (${selectedCount} Qs)`}</span>
@@ -400,13 +491,41 @@ export default function PracticePage() {
           </div>
         </div>
 
+        {/* Active Roadmap Integration Banner */}
+        {selectedCategory === 'Roadmap Topics' && (
+          <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs shrink-0 shadow-sm">
+                Day {roadmapTasks.find(t => t.topic === selectedSkill)?.day || 1}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center gap-2">
+                  <span>Roadmap-Aligned Practice: {selectedSkill}</span>
+                  <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-300 font-extrabold border border-blue-200 dark:border-blue-700">
+                    Target Job Priority
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                  Questions automatically targeted to your {app?.jobTitle || 'target job'} curriculum. Use category dropdowns to explore other domains.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/app/${applicationId}/roadmap`}
+              className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline shrink-0"
+            >
+              View Full Roadmap →
+            </Link>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] pb-2">
           <button
             onClick={() => setActiveTab('practice')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
               activeTab === 'practice'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -416,7 +535,7 @@ export default function PracticePage() {
             onClick={() => setActiveTab('performance')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
               activeTab === 'performance'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
@@ -440,7 +559,7 @@ export default function PracticePage() {
                     <button
                       onClick={() => handleStartSession(true)}
                       disabled={generating}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
                     >
                       <RotateCcw size={14} />
                       <span>Reset History & Practice Again</span>
@@ -448,7 +567,7 @@ export default function PracticePage() {
                   </>
                 ) : (
                   <>
-                    <Cpu size={36} className="text-indigo-600 mx-auto" />
+                    <Cpu size={36} className="text-blue-600 mx-auto" />
                     <h3 className="font-bold text-base">Ready for Targeted Practice?</h3>
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                       Select your desired category, skill, difficulty, and question count above, then launch your practice session.
@@ -456,7 +575,7 @@ export default function PracticePage() {
                     <button
                       onClick={() => handleStartSession(false)}
                       disabled={generating}
-                      className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
                     >
                       Start {selectedSkill} Session
                     </button>
@@ -493,9 +612,9 @@ export default function PracticePage() {
                     <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase">Incorrect</span>
                     <div className="text-xl font-extrabold text-rose-700 dark:text-rose-300 mt-0.5">{incorrectCount}</div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-500/30">
-                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase">Accuracy</span>
-                    <div className="text-xl font-extrabold text-indigo-700 dark:text-indigo-300 mt-0.5">{accuracyPercentage}%</div>
+                  <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30">
+                    <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Accuracy</span>
+                    <div className="text-xl font-extrabold text-blue-700 dark:text-blue-300 mt-0.5">{accuracyPercentage}%</div>
                   </div>
                 </div>
 
@@ -504,7 +623,7 @@ export default function PracticePage() {
                   <button
                     onClick={() => handleStartSession(false)}
                     disabled={generating}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
                   >
                     <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
                     <span>Practice Again</span>
@@ -526,7 +645,7 @@ export default function PracticePage() {
               <div className="p-6 sm:p-7 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-5 shadow-sm">
                 {/* Question Header & Breadcrumbs */}
                 <div className="flex justify-between items-center pb-3.5 border-b border-[var(--border-subtle)]">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                     Question {currentIndex + 1} of {questions.length} • {currentQ.mode === 'coding_challenges' ? 'Coding Challenge' : (currentQ.type || 'MCQ').replace(/_/g, ' ')}
                   </span>
                   <div className="flex items-center gap-2 text-xs font-semibold">
@@ -594,7 +713,7 @@ export default function PracticePage() {
                     <div className="space-y-2 pt-2">
                       <div className="flex justify-between items-center text-xs font-semibold">
                         <span className="text-[var(--text-muted)]">Your Code Solution:</span>
-                        <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">{currentQ.skill}</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-mono text-[11px]">{currentQ.skill}</span>
                       </div>
                       <textarea
                         rows={10}
@@ -602,16 +721,16 @@ export default function PracticePage() {
                         disabled={!!submissionResult}
                         onChange={(e) => setCodeAnswer(e.target.value)}
                         placeholder="Write your code solution here..."
-                        className="w-full p-4 rounded-xl font-mono text-xs bg-slate-950 text-slate-100 border border-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed disabled:opacity-80"
+                        className="w-full p-4 rounded-xl font-mono text-xs bg-slate-950 text-slate-100 border border-slate-800 focus:outline-none focus:border-blue-500 leading-relaxed disabled:opacity-80"
                       />
                     </div>
 
                     {/* Revealed Reference Solution Card (Does not overwrite editor code) */}
                     {revealedSolution && (
-                      <div className="p-4 rounded-xl bg-slate-900 border border-indigo-500/40 text-slate-100 space-y-2.5 mt-3 shadow-md">
-                        <div className="flex items-center justify-between text-xs font-bold text-indigo-400 border-b border-slate-800 pb-2">
+                      <div className="p-4 rounded-xl bg-slate-900 border border-blue-500/40 text-slate-100 space-y-2.5 mt-3 shadow-md">
+                        <div className="flex items-center justify-between text-xs font-bold text-blue-400 border-b border-slate-800 pb-2">
                           <span className="flex items-center gap-1.5">
-                            <Key size={14} className="text-indigo-400" />
+                            <Key size={14} className="text-blue-400" />
                             Official Reference Solution ({currentQ.skill})
                           </span>
                           <span className="text-[10px] text-slate-400 font-normal">Reference Only (Your editor code is preserved)</span>
@@ -648,7 +767,7 @@ export default function PracticePage() {
                           key={idx}
                           className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-all ${
                             selectedAnswer === opt
-                              ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 font-medium'
+                              ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 font-medium'
                               : 'border-[var(--border-subtle)] hover:border-slate-400 bg-[var(--bg-primary)]'
                           }`}
                         >
@@ -688,7 +807,7 @@ export default function PracticePage() {
                           ? !codeAnswer.trim()
                           : !selectedAnswer)
                       }
-                      className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                      className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
                     >
                       {submitting ? 'Auto-Grading On Server...' : 'Submit & Check Answer'}
                     </button>
@@ -752,7 +871,7 @@ export default function PracticePage() {
                         )}
 
                         {submissionResult.adaptiveEvaluation && (
-                          <div className="pt-1.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
+                          <div className="pt-1.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
                             Adaptive Engine: {submissionResult.adaptiveEvaluation.reason}
                           </div>
                         )}
@@ -779,7 +898,7 @@ export default function PracticePage() {
                         )}
                         <button
                           onClick={handleNextQuestion}
-                          className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all"
+                          className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all"
                         >
                           {currentIndex < questions.length - 1 ? 'Next Question →' : 'View Session Summary'}
                         </button>
@@ -805,10 +924,10 @@ export default function PracticePage() {
                   <div key={idx} className="p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2 shadow-sm">
                     <div className="flex justify-between items-center">
                       <h4 className="font-bold text-sm">{item.topic}</h4>
-                      <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">{item.accuracy}% Accuracy</span>
+                      <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">{item.accuracy}% Accuracy</span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${item.accuracy}%` }} />
+                      <div className="h-full bg-blue-600 rounded-full" style={{ width: `${item.accuracy}%` }} />
                     </div>
                     <div className="flex justify-between items-center text-[11px] text-[var(--text-muted)] pt-1">
                       <span>{item.totalAttempts} attempts logged</span>

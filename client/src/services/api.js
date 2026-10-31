@@ -44,3 +44,24 @@ apiClient.interceptors.response.use(
     return Promise.reject(new Error(message));
   }
 );
+
+// Cache of active in-flight GET requests to eliminate duplicate simultaneous fetches
+const inFlightGetRequests = new Map();
+
+const rawGet = apiClient.get.bind(apiClient);
+apiClient.get = function (url, config) {
+  // Deduplicate concurrent GET requests for application metadata and resources
+  const isAppResource = typeof url === 'string' && (url.startsWith('/applications/') || url.startsWith('/company/'));
+  if (isAppResource && !config?.params) {
+    if (inFlightGetRequests.has(url)) {
+      return inFlightGetRequests.get(url);
+    }
+    const reqPromise = rawGet(url, config).finally(() => {
+      // Clear from in-flight cache shortly after completion to allow fresh data on deliberate re-fetch
+      setTimeout(() => inFlightGetRequests.delete(url), 300);
+    });
+    inFlightGetRequests.set(url, reqPromise);
+    return reqPromise;
+  }
+  return rawGet(url, config);
+};

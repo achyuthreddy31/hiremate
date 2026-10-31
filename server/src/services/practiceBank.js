@@ -5237,9 +5237,9 @@ export const CURATED_CODING_CHALLENGES = {
       examples: [
         { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed string in Java' }
       ],
-      constraints: ['0 <= str.length <= 10^4'],
-      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      constraints: ['0 <= str.length() <= 10^4'],
+      starterCode: 'class Solution {\n    public String reverseString(String str) {\n        // Write your solution here\n        return "";\n    }\n}',
+      referenceSolution: 'class Solution {\n    public String reverseString(String str) {\n        return new StringBuilder(str).reverse().toString();\n    }\n}',
       testCases: [
         { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
         { input: JSON.stringify({ str: 'world' }), expectedOutput: '"dlrow"' }
@@ -5254,8 +5254,8 @@ export const CURATED_CODING_CHALLENGES = {
         { input: 'nums = [-2,1,-3,4,-1,2,1,-5,4]', output: '6', explanation: 'Subarray [4,-1,2,1] has the largest sum 6' }
       ],
       constraints: ['1 <= nums.length <= 10^5'],
-      starterCode: 'function maxSubArray(nums) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function maxSubArray(nums) {\n  let maxS = nums[0], curr = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    curr = Math.max(nums[i], curr + nums[i]);\n    maxS = Math.max(maxS, curr);\n  }\n  return maxS;\n}',
+      starterCode: 'class Solution {\n    public int maxSubArray(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n}',
+      referenceSolution: 'class Solution {\n    public int maxSubArray(int[] nums) {\n        int maxS = nums[0], curr = nums[0];\n        for (int i = 1; i < nums.length; i++) {\n            curr = Math.max(nums[i], curr + nums[i]);\n            maxS = Math.max(maxS, curr);\n        }\n        return maxS;\n    }\n}',
       testCases: [
         { input: JSON.stringify({ nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4] }), expectedOutput: '6' },
         { input: JSON.stringify({ nums: [1] }), expectedOutput: '1' }
@@ -5273,8 +5273,8 @@ export const CURATED_CODING_CHALLENGES = {
         { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed character sequence' }
       ],
       constraints: ['0 <= length <= 10^4'],
-      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      starterCode: '#include <stdio.h>\n#include <string.h>\n\nchar* reverseString(char* str) {\n    // Write your solution here\n    return str;\n}',
+      referenceSolution: '#include <stdio.h>\n#include <string.h>\n\nchar* reverseString(char* str) {\n    int len = strlen(str);\n    for (int i = 0; i < len / 2; i++) {\n        char temp = str[i];\n        str[i] = str[len - 1 - i];\n        str[len - 1 - i] = temp;\n    }\n    return str;\n}',
       testCases: [
         { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
         { input: JSON.stringify({ str: 'Nexus' }), expectedOutput: '"suxeN"' }
@@ -5282,18 +5282,18 @@ export const CURATED_CODING_CHALLENGES = {
     },
     {
       difficulty: 'medium',
-      problemStatement: 'Write a function `twoSum(nums, target)` that returns the indices of the two numbers in `nums` that add up to `target` in C.',
-      inputDescription: 'nums: integer array, target: integer',
-      outputDescription: 'Array of two indices [i, j]',
+      problemStatement: 'Write a function `maxSubArray(nums, numsSize)` that returns the maximum contiguous subarray sum in C.',
+      inputDescription: 'nums: integer array, numsSize: size of array',
+      outputDescription: 'Integer maximum subarray sum',
       examples: [
-        { input: 'nums = [2, 7, 11, 15], target = 9', output: '[0, 1]', explanation: '2 + 7 = 9' }
+        { input: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]', output: '6', explanation: 'Subarray sum 6' }
       ],
-      constraints: ['2 <= nums.length <= 10^4'],
-      starterCode: 'function twoSum(nums, target) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function twoSum(nums, target) {\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const diff = target - nums[i];\n    if (map.has(diff)) return [map.get(diff), i];\n    map.set(nums[i], i);\n  }\n  return [];\n}',
+      constraints: ['1 <= numsSize <= 10^5'],
+      starterCode: '#include <stdio.h>\n\nint maxSubArray(int* nums, int numsSize) {\n    // Write your solution here\n    return 0;\n}',
+      referenceSolution: '#include <stdio.h>\n\nint maxSubArray(int* nums, int numsSize) {\n    int maxS = nums[0], curr = nums[0];\n    for (int i = 1; i < numsSize; i++) {\n        curr = (nums[i] > curr + nums[i]) ? nums[i] : curr + nums[i];\n        if (curr > maxS) maxS = curr;\n    }\n    return maxS;\n}',
       testCases: [
-        { input: JSON.stringify({ nums: [2, 7, 11, 15], target: 9 }), expectedOutput: JSON.stringify([0, 1]) },
-        { input: JSON.stringify({ nums: [3, 2, 4], target: 6 }), expectedOutput: JSON.stringify([1, 2]) }
+        { input: JSON.stringify({ nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4] }), expectedOutput: '6' },
+        { input: JSON.stringify({ nums: [1] }), expectedOutput: '1' }
       ]
     }
   ],
@@ -5308,8 +5308,8 @@ export const CURATED_CODING_CHALLENGES = {
         { input: 'str = "hello"', output: '"olleh"', explanation: 'Reversed std::string' }
       ],
       constraints: ['0 <= str.length() <= 10^4'],
-      starterCode: 'function reverseString(str) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function reverseString(str) {\n  return str.split("").reverse().join("");\n}',
+      starterCode: '#include <string>\n#include <algorithm>\n\nclass Solution {\npublic:\n    std::string reverseString(std::string str) {\n        // Write your solution here\n        return "";\n    }\n};',
+      referenceSolution: '#include <string>\n#include <algorithm>\n\nclass Solution {\npublic:\n    std::string reverseString(std::string str) {\n        std::reverse(str.begin(), str.end());\n        return str;\n    }\n};',
       testCases: [
         { input: JSON.stringify({ str: 'hello' }), expectedOutput: '"olleh"' },
         { input: JSON.stringify({ str: 'algorithm' }), expectedOutput: '"mhtirogla"' }
@@ -5324,8 +5324,8 @@ export const CURATED_CODING_CHALLENGES = {
         { input: 'nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4]', output: '6', explanation: 'Kadane algorithm maximum subarray sum' }
       ],
       constraints: ['1 <= nums.size() <= 10^5'],
-      starterCode: 'function maxSubArray(nums) {\n  // Write your solution here\n  \n}',
-      referenceSolution: 'function maxSubArray(nums) {\n  let maxS = nums[0], curr = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    curr = Math.max(nums[i], curr + nums[i]);\n    maxS = Math.max(maxS, curr);\n  }\n  return maxS;\n}',
+      starterCode: '#include <vector>\n#include <algorithm>\n\nclass Solution {\npublic:\n    int maxSubArray(std::vector<int>& nums) {\n        // Write your solution here\n        return 0;\n    }\n};',
+      referenceSolution: '#include <vector>\n#include <algorithm>\n\nclass Solution {\npublic:\n    int maxSubArray(std::vector<int>& nums) {\n        int maxS = nums[0], curr = nums[0];\n        for (size_t i = 1; i < nums.size(); ++i) {\n            curr = std::max(nums[i], curr + nums[i]);\n            maxS = std::max(maxS, curr);\n        }\n        return maxS;\n    }\n};',
       testCases: [
         { input: JSON.stringify({ nums: [-2, 1, -3, 4, -1, 2, 1, -5, 4] }), expectedOutput: '6' },
         { input: JSON.stringify({ nums: [1] }), expectedOutput: '1' }
@@ -5343,12 +5343,28 @@ export const CURATED_CODING_CHALLENGES = {
         { input: 'nums = [1, 2, 3, 4, 5, 6]', output: '[2, 4, 6]', explanation: 'Even numbers divisible by 2' }
       ],
       constraints: ['0 <= nums.length <= 10^5'],
-      starterCode: 'function filterEvenNumbers(nums: number[]): number[] {\n  // Write your solution here\n  \n}',
+      starterCode: 'function filterEvenNumbers(nums: number[]): number[] {\n  // Write your solution here\n  return [];\n}',
       referenceSolution: 'function filterEvenNumbers(nums: number[]): number[] {\n  return nums.filter(n => n % 2 === 0);\n}',
       testCases: [
         { input: JSON.stringify({ nums: [1, 2, 3, 4, 5, 6] }), expectedOutput: JSON.stringify([2, 4, 6]) },
         { input: JSON.stringify({ nums: [1, 3, 5] }), expectedOutput: JSON.stringify([]) },
         { input: JSON.stringify({ nums: [2, 4, 8] }), expectedOutput: JSON.stringify([2, 4, 8]) }
+      ]
+    },
+    {
+      difficulty: 'medium',
+      problemStatement: 'Implement a function `twoSum(nums: number[], target: number): number[]` that returns indices of two numbers that add up to target.',
+      inputDescription: 'nums: array of numbers, target: number',
+      outputDescription: 'Array of two indices [i, j]',
+      examples: [
+        { input: 'nums = [2, 7, 11, 15], target = 9', output: '[0, 1]', explanation: 'nums[0] + nums[1] = 9' }
+      ],
+      constraints: ['2 <= nums.length <= 10^4'],
+      starterCode: 'function twoSum(nums: number[], target: number): number[] {\n  // Write your solution here\n  return [];\n}',
+      referenceSolution: 'function twoSum(nums: number[], target: number): number[] {\n  const map = new Map<number, number>();\n  for (let i = 0; i < nums.length; i++) {\n    const diff = target - nums[i];\n    if (map.has(diff)) return [map.get(diff)!, i];\n    map.set(nums[i], i);\n  }\n  return [];\n}',
+      testCases: [
+        { input: JSON.stringify({ nums: [2, 7, 11, 15], target: 9 }), expectedOutput: JSON.stringify([0, 1]) },
+        { input: JSON.stringify({ nums: [3, 2, 4], target: 6 }), expectedOutput: JSON.stringify([1, 2]) }
       ]
     }
   ],
@@ -5597,6 +5613,151 @@ export function generateProceduralCodingChallenge(skill, difficulty = 'medium', 
       testCases: [
         { input: JSON.stringify({ nums1: [1, 2, 2, 1], nums2: [2, 2] }), expectedOutput: JSON.stringify([2]) },
         { input: JSON.stringify({ nums1: [4, 9, 5], nums2: [9, 4, 9, 8, 4] }), expectedOutput: JSON.stringify([9, 4]) }
+      ]
+    },
+    {
+      title: `Valid Parentheses Validator in ${skill}`,
+      statement: `Given a string s containing just '(', ')', '{', '}', '[' and ']', determine if the input string is valid in ${skill}.`,
+      input: 's: string of brackets',
+      output: 'Boolean: true if valid, false otherwise',
+      starter: `// Starter skeleton in ${skill}\nfunction isValid(s) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function isValid(s) {\n  const stack = [];\n  const map = { ')': '(', '}': '{', ']': '[' };\n  for (const c of s) {\n    if (c === '(' || c === '{' || c === '[') stack.push(c);\n    else if (stack.pop() !== map[c]) return false;\n  }\n  return stack.length === 0;\n}`,
+      testCases: [
+        { input: JSON.stringify({ s: '()' }), expectedOutput: 'true' },
+        { input: JSON.stringify({ s: '()[]{}' }), expectedOutput: 'true' },
+        { input: JSON.stringify({ s: '(]' }), expectedOutput: 'false' }
+      ]
+    },
+    {
+      title: `Reverse Array In-Place in ${skill}`,
+      statement: `Given an array of integers nums, reverse the array in-place with O(1) extra memory in ${skill}.`,
+      input: 'nums: array of integers',
+      output: 'Reversed array of integers',
+      starter: `// Starter skeleton in ${skill}\nfunction reverseArray(nums) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function reverseArray(nums) {\n  let l = 0, r = nums.length - 1;\n  while (l < r) {\n    const temp = nums[l];\n    nums[l] = nums[r];\n    nums[r] = temp;\n    l++;\n    r--;\n  }\n  return nums;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [1, 2, 3, 4] }), expectedOutput: JSON.stringify([4, 3, 2, 1]) },
+        { input: JSON.stringify({ nums: [5] }), expectedOutput: JSON.stringify([5]) }
+      ]
+    },
+    {
+      title: `Merge Two Sorted Arrays in ${skill}`,
+      statement: `Merge two sorted arrays nums1 and nums2 into a single sorted array in ${skill}.`,
+      input: 'nums1: sorted array, nums2: sorted array',
+      output: 'Merged sorted array',
+      starter: `// Starter skeleton in ${skill}\nfunction mergeSorted(nums1, nums2) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function mergeSorted(nums1, nums2) {\n  const res = [];\n  let i = 0, j = 0;\n  while (i < nums1.length && j < nums2.length) {\n    if (nums1[i] <= nums2[j]) { res.push(nums1[i]); i++; }\n    else { res.push(nums2[j]); j++; }\n  }\n  while (i < nums1.length) { res.push(nums1[i]); i++; }\n  while (j < nums2.length) { res.push(nums2[j]); j++; }\n  return res;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums1: [1, 3, 5], nums2: [2, 4, 6] }), expectedOutput: JSON.stringify([1, 2, 3, 4, 5, 6]) },
+        { input: JSON.stringify({ nums1: [], nums2: [1] }), expectedOutput: JSON.stringify([1]) }
+      ]
+    },
+    {
+      title: `Best Time to Buy and Sell Stock in ${skill}`,
+      statement: `Find the maximum profit you can achieve from buying and selling stock once given daily prices in ${skill}.`,
+      input: 'prices: array of integers',
+      output: 'Integer maximum profit',
+      starter: `// Starter skeleton in ${skill}\nfunction maxProfit(prices) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function maxProfit(prices) {\n  let minPrice = Infinity, maxP = 0;\n  for (const p of prices) {\n    if (p < minPrice) minPrice = p;\n    else if (p - minPrice > maxP) maxP = p - minPrice;\n  }\n  return maxP;\n}`,
+      testCases: [
+        { input: JSON.stringify({ prices: [7, 1, 5, 3, 6, 4] }), expectedOutput: '5' },
+        { input: JSON.stringify({ prices: [7, 6, 4, 3, 1] }), expectedOutput: '0' }
+      ]
+    },
+    {
+      title: `Valid Anagram Checker in ${skill}`,
+      statement: `Given two strings s and t, return true if t is an anagram of s, and false otherwise in ${skill}.`,
+      input: 's: string, t: string',
+      output: 'Boolean: true if anagram, false otherwise',
+      starter: `// Starter skeleton in ${skill}\nfunction isAnagram(s, t) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function isAnagram(s, t) {\n  if (s.length !== t.length) return false;\n  const count = {};\n  for (const c of s) count[c] = (count[c] || 0) + 1;\n  for (const c of t) {\n    if (!count[c]) return false;\n    count[c]--;\n  }\n  return true;\n}`,
+      testCases: [
+        { input: JSON.stringify({ s: 'anagram', t: 'nagaram' }), expectedOutput: 'true' },
+        { input: JSON.stringify({ s: 'rat', t: 'car' }), expectedOutput: 'false' }
+      ]
+    },
+    {
+      title: `Longest Substring Without Repeating Characters in ${skill}`,
+      statement: `Given a string s, find the length of the longest substring without duplicate characters in ${skill}.`,
+      input: 's: string',
+      output: 'Integer length of longest unique substring',
+      starter: `// Starter skeleton in ${skill}\nfunction lengthOfLongestSubstring(s) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function lengthOfLongestSubstring(s) {\n  let maxLen = 0, l = 0;\n  const set = new Set();\n  for (let r = 0; r < s.length; r++) {\n    while (set.has(s[r])) { set.delete(s[l]); l++; }\n    set.add(s[r]);\n    maxLen = Math.max(maxLen, r - l + 1);\n  }\n  return maxLen;\n}`,
+      testCases: [
+        { input: JSON.stringify({ s: 'abcabcbb' }), expectedOutput: '3' },
+        { input: JSON.stringify({ s: 'bbbbb' }), expectedOutput: '1' }
+      ]
+    },
+    {
+      title: `Single Number Finder in ${skill}`,
+      statement: `Given a non-empty array of integers nums where every element appears twice except for one, find that single element in ${skill}.`,
+      input: 'nums: array of integers',
+      output: 'Integer single element',
+      starter: `// Starter skeleton in ${skill}\nfunction singleNumber(nums) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function singleNumber(nums) {\n  let res = 0;\n  for (const n of nums) res ^= n;\n  return res;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [2, 2, 1] }), expectedOutput: '1' },
+        { input: JSON.stringify({ nums: [4, 1, 2, 1, 2] }), expectedOutput: '4' }
+      ]
+    },
+    {
+      title: `House Robber Maximum Loot in ${skill}`,
+      statement: `Determine the maximum amount of money you can rob tonight without alerting the police by not robbing adjacent houses in ${skill}.`,
+      input: 'nums: array of integers',
+      output: 'Integer maximum loot',
+      starter: `// Starter skeleton in ${skill}\nfunction rob(nums) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function rob(nums) {\n  let prev1 = 0, prev2 = 0;\n  for (const n of nums) {\n    const temp = Math.max(prev1, prev2 + n);\n    prev2 = prev1;\n    prev1 = temp;\n  }\n  return prev1;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [1, 2, 3, 1] }), expectedOutput: '4' },
+        { input: JSON.stringify({ nums: [2, 7, 9, 3, 1] }), expectedOutput: '12' }
+      ]
+    },
+    {
+      title: `Majority Element Finder in ${skill}`,
+      statement: `Find the majority element in nums that appears more than floor(n / 2) times in ${skill}.`,
+      input: 'nums: array of integers',
+      output: 'Integer majority element',
+      starter: `// Starter skeleton in ${skill}\nfunction majorityElement(nums) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function majorityElement(nums) {\n  let candidate = nums[0], count = 0;\n  for (const n of nums) {\n    if (count === 0) candidate = n;\n    count += (n === candidate) ? 1 : -1;\n  }\n  return candidate;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [3, 2, 3] }), expectedOutput: '3' },
+        { input: JSON.stringify({ nums: [2, 2, 1, 1, 1, 2, 2] }), expectedOutput: '2' }
+      ]
+    },
+    {
+      title: `Missing Number in Range in ${skill}`,
+      statement: `Given an array nums containing n distinct numbers in the range [0, n], return the only number in the range that is missing in ${skill}.`,
+      input: 'nums: array of n integers',
+      output: 'Integer missing number',
+      starter: `// Starter skeleton in ${skill}\nfunction missingNumber(nums) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function missingNumber(nums) {\n  const n = nums.length;\n  const expected = (n * (n + 1)) / 2;\n  const actual = nums.reduce((a, b) => a + b, 0);\n  return expected - actual;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [3, 0, 1] }), expectedOutput: '2' },
+        { input: JSON.stringify({ nums: [0, 1] }), expectedOutput: '2' }
+      ]
+    },
+    {
+      title: `Count Prime Numbers in ${skill}`,
+      statement: `Given an integer n, return the number of prime numbers that are strictly less than n in ${skill}.`,
+      input: 'n: integer',
+      output: 'Integer count of primes',
+      starter: `// Starter skeleton in ${skill}\nfunction countPrimes(n) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function countPrimes(n) {\n  if (n <= 2) return 0;\n  const isPrime = new Uint8Array(n).fill(1);\n  isPrime[0] = 0; isPrime[1] = 0;\n  for (let i = 2; i * i < n; i++) {\n    if (isPrime[i]) {\n      for (let j = i * i; j < n; j += i) isPrime[j] = 0;\n    }\n  }\n  let count = 0;\n  for (let i = 2; i < n; i++) if (isPrime[i]) count++;\n  return count;\n}`,
+      testCases: [
+        { input: JSON.stringify({ n: 10 }), expectedOutput: '4' },
+        { input: JSON.stringify({ n: 0 }), expectedOutput: '0' }
+      ]
+    },
+    {
+      title: `Search in Rotated Sorted Array in ${skill}`,
+      statement: `Given a sorted rotated array nums and an integer target, return the index of target, or -1 if not found in O(log n) in ${skill}.`,
+      input: 'nums: rotated sorted integer array, target: integer',
+      output: 'Integer index or -1',
+      starter: `// Starter skeleton in ${skill}\nfunction searchRotated(nums, target) {\n  // Write your solution here\n  \n}`,
+      referenceSolution: `function searchRotated(nums, target) {\n  let l = 0, r = nums.length - 1;\n  while (l <= r) {\n    const mid = Math.floor((l + r) / 2);\n    if (nums[mid] === target) return mid;\n    if (nums[l] <= nums[mid]) {\n      if (nums[l] <= target && target < nums[mid]) r = mid - 1;\n      else l = mid + 1;\n    } else {\n      if (nums[mid] < target && target <= nums[r]) l = mid + 1;\n      else r = mid - 1;\n    }\n  }\n  return -1;\n}`,
+      testCases: [
+        { input: JSON.stringify({ nums: [4, 5, 6, 7, 0, 1, 2], target: 0 }), expectedOutput: '4' },
+        { input: JSON.stringify({ nums: [4, 5, 6, 7, 0, 1, 2], target: 3 }), expectedOutput: '-1' }
       ]
     }
   ];

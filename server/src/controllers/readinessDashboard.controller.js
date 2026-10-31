@@ -168,7 +168,7 @@ export async function generateFinalChecklist(req, res) {
       },
       {
         category: 'company_research',
-        title: `Study ${app?.companyName || 'Target Company'} Values & Pass Knowledge Quiz`,
+        title: `Study ${app?.companyName || 'Target Company'} Values & Review Hub Sections`,
         priority: 'important',
         status: 'pending',
         reason: 'Demonstrate deep organizational alignment and genuine motivation.'

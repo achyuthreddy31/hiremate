@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Interview Readiness Score (0 - 100)
  * Pure functions strictly implementing Section 3.4.
  *
@@ -41,10 +41,16 @@ export function calculateInterviewReadinessScore({
   };
 
   // 2. Coding (15)
-  // Average accuracy on auto-graded coding items (debugging, output prediction, code reading)
-  // Note: AI-reviewed code-writing does NOT affect the score!
-  const autoGradedTypes = ['debugging', 'output_prediction', 'code_reading', 'coding_mcq'];
-  const validCodingAttempts = (codingAttempts || []).filter(a => autoGradedTypes.includes(a.type));
+  // Average accuracy on auto-graded coding items (debugging, output prediction, code reading, coding_mcq, code_writing)
+  // Includes genuinely evaluated code_writing submissions with verified test-case outcomes
+  const autoGradedTypes = ['debugging', 'output_prediction', 'code_reading', 'coding_mcq', 'code_writing'];
+  const validCodingAttempts = (codingAttempts || []).filter(a => {
+    if (!autoGradedTypes.includes(a.type)) return false;
+    if (a.type === 'code_writing') {
+      return typeof a.isCorrect === 'boolean';
+    }
+    return true;
+  });
 
   const codingStarted = validCodingAttempts.length > 0;
   let codingScore = 0;
@@ -113,25 +119,19 @@ export function calculateInterviewReadinessScore({
   // 6. Company Knowledge (10)
   // Determined by percentage of research hub sections reviewed
   const sectionsRatio = companyKnowledgeData?.sectionsReviewedRatio;
-  const quizScore = companyKnowledgeData?.quizScore;
-  const availableCompanyVals = [];
+  const companyStarted = typeof sectionsRatio === 'number';
+  const companyScore = companyStarted ? Math.round(sectionsRatio * 100) : 0;
 
-  if (typeof sectionsRatio === 'number') availableCompanyVals.push(Math.round(sectionsRatio * 100));
-  else if (typeof quizScore === 'number') availableCompanyVals.push(quizScore);
-
-  const companyStarted = availableCompanyVals.length > 0;
-  let companyScore = 0;
   if (companyStarted) {
     areasStartedCount++;
-    const sum = availableCompanyVals.reduce((a, b) => a + b, 0);
-    companyScore = Math.round(sum / availableCompanyVals.length);
   }
+
   categories.companyKnowledge = {
     score: companyScore,
     weight: READINESS_SCORE_WEIGHTS.companyKnowledge,
     status: companyStarted ? 'active' : 'not_started',
     explanation: companyStarted
-      ? `${typeof sectionsRatio === 'number' ? Math.round(sectionsRatio * 100) : (quizScore ?? 0)}% of Company Research Hub sections reviewed.`
+      ? `${companyScore}% of Company Research Hub sections reviewed.`
       : 'Review company research hub sections to build company context.'
   };
 

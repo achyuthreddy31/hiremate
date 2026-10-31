@@ -121,8 +121,8 @@ export default function ResumePage() {
         )}
 
         {/* Upload Box */}
-        <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-dashed border-[var(--border-subtle)] hover:border-indigo-500/60 transition-colors text-center relative shadow-sm">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-3 border border-indigo-100 dark:border-indigo-900">
+        <div className="p-8 rounded-2xl bg-[var(--bg-surface)] border-2 border-dashed border-[var(--border-subtle)] hover:border-blue-500/60 transition-colors text-center relative shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3 border border-blue-100 dark:border-blue-900">
             {uploading ? <RefreshCw size={24} className="animate-spin" /> : <Upload size={24} />}
           </div>
           <h3 className="font-bold text-base sm:text-lg">
@@ -132,7 +132,7 @@ export default function ResumePage() {
             Standard PDF format only (Max 5 MB). File is evaluated in memory and discarded—never written to persistent disk or exposed publicly.
           </p>
 
-          <label className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm cursor-pointer transition-all shadow hover:shadow-indigo-500/20 active:scale-95">
+          <label className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm cursor-pointer transition-all shadow hover:shadow-blue-500/20 active:scale-95">
             <span>{uploading ? 'Extracting Text In Memory...' : 'Select PDF File'}</span>
             <input
               type="file"
@@ -144,7 +144,7 @@ export default function ResumePage() {
           </label>
 
           {resumeData?.originalFilename && (
-            <div className="mt-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1.5">
+            <div className="mt-4 text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1.5">
               <FileText size={14} />
               <span>Current file: {resumeData.originalFilename} ({(resumeData.fileSize / 1024).toFixed(1)} KB)</span>
             </div>
@@ -160,7 +160,7 @@ export default function ResumePage() {
                 <p className="text-xs text-[var(--text-muted)]">Rule-based scoring formula evaluating resume construction</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                   Action Verb Ratio: {Math.round((resumeData.qualityChecklist.actionVerbRatio || 0) * 100)}%
                 </span>
               </div>
@@ -233,7 +233,7 @@ export default function ResumePage() {
             <div className="pt-3 flex justify-end">
               <Link
                 to={`/app/${applicationId}/match`}
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 font-bold hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline"
               >
                 <span>Proceed to Target Job Alignment →</span>
               </Link>

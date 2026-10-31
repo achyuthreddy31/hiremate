@@ -4,7 +4,10 @@ import {
   selectDistinctQuestions,
   normalizeQuestionText,
   calculateTokenSimilarity,
+  calculateContentSimilarity,
+  extractContentTokens,
   generateCuratedQuestions,
+  generateTargetedPracticeQuestions,
   validateQuestionFormat
 } from '../src/services/practice.service.js';
 import { buildCompanyResearchDataset } from '../src/services/companyResearch.service.js';
@@ -164,25 +167,261 @@ describe('Question Deduplication & Session Selection Tests', () => {
     });
   });
 
-  describe('Company Research Quiz Non-Duplication', () => {
-    it('generates quiz where every question prompt is distinct and options are shuffled', () => {
+  describe('Company Research 7-Area Hub Non-Duplication', () => {
+    it('generates research items where every claim is distinct across 7 research hub categories', () => {
       const research = buildCompanyResearchDataset('TechCorp');
-      expect(research.quiz.length).toBeGreaterThan(1);
+      expect(research.items.length).toBeGreaterThanOrEqual(14);
+      expect(research.sectionsReviewed.length).toBe(7);
 
-      const prompts = research.quiz.map(q => q.question);
-      const uniquePrompts = new Set(prompts);
+      const statements = research.items.map(item => item.information.trim().toLowerCase());
+      const uniqueStatements = new Set(statements);
 
-      // All questions must have distinct prompts
-      expect(uniquePrompts.size).toBe(prompts.length);
+      // All research bullet points must be distinct statements
+      expect(uniqueStatements.size).toBe(statements.length);
 
-      // Each question must have valid options with the correct answer matching correctAnswerIndex
-      for (const q of research.quiz) {
-        expect(q.options.length).toBe(4);
-        expect(q.correctAnswerIndex).toBeGreaterThanOrEqual(0);
-        expect(q.correctAnswerIndex).toBeLessThan(4);
-        const correctText = q.options[q.correctAnswerIndex];
-        expect(correctText).toBeTruthy();
+      // Each category must have valid items with source URLs
+      for (const item of research.items) {
+        expect(item.sourceUrl).toBeTruthy();
+        expect(item.confidence).toBeGreaterThanOrEqual(0.7);
       }
+    });
+  });
+
+  describe('Cross-Skill & Procedural Template Deduplication Resilience', () => {
+    it('does NOT flag procedural template questions across different skills as duplicates', () => {
+      const qPython = {
+        question: 'When profiling an application utilizing Python, what is the most effective approach to identify and resolve high CPU contention?',
+        skill: 'Python',
+        category: 'Programming Languages',
+        mode: 'mcq'
+      };
+      const qReact = {
+        question: 'When profiling an application utilizing React, what is the most effective approach to identify and resolve high CPU contention?',
+        skill: 'React',
+        category: 'Web Development',
+        mode: 'mcq'
+      };
+
+      // Cross-skill object comparison must never be flagged as duplicates
+      expect(isDuplicateOrNearDuplicate(qPython, [qReact])).toBe(false);
+      expect(isDuplicateOrNearDuplicate(qReact, [qPython])).toBe(false);
+
+      // String-level check recognizing different core technical skills
+      expect(isDuplicateOrNearDuplicate(qPython.question, [qReact.question])).toBe(false);
+    });
+
+    it('does NOT flag distinct conceptual questions within the same skill as duplicates', () => {
+      const qPass = {
+        question: 'In Python, what is the primary purpose of the pass statement?',
+        skill: 'Python',
+        mode: 'mcq'
+      };
+      const qYield = {
+        question: 'In Python, what is the primary purpose of the yield statement?',
+        skill: 'Python',
+        mode: 'mcq'
+      };
+
+      expect(isDuplicateOrNearDuplicate(qPass, [qYield])).toBe(false);
+      expect(isDuplicateOrNearDuplicate(qYield, [qPass])).toBe(false);
+    });
+
+    it('does NOT flag questions of different modes (MCQ vs Coding Challenge) as duplicates', () => {
+      const mcqQ = {
+        question: 'Reverse an array of numbers',
+        skill: 'JavaScript',
+        mode: 'mcq'
+      };
+      const codingQ = {
+        question: 'Reverse an array of numbers',
+        problemStatement: 'Reverse an array of numbers',
+        skill: 'JavaScript',
+        mode: 'coding_challenges'
+      };
+
+      expect(isDuplicateOrNearDuplicate(mcqQ, [codingQ])).toBe(false);
+    });
+
+    it('flags genuine exact and near-duplicates within the same skill', () => {
+      const qOriginal = {
+        question: 'Explain how React virtual DOM diffing algorithm operates.',
+        skill: 'React',
+        mode: 'mcq'
+      };
+      const qExact = {
+        question: 'explain how react virtual dom diffing algorithm operates',
+        skill: 'React',
+        mode: 'mcq'
+      };
+      const qPunctuation = {
+        question: 'Explain how React virtual DOM diffing algorithm operates?!?!',
+        skill: 'React',
+        mode: 'mcq'
+      };
+
+      expect(isDuplicateOrNearDuplicate(qExact, [qOriginal])).toBe(true);
+      expect(isDuplicateOrNearDuplicate(qPunctuation, [qOriginal])).toBe(true);
+    });
+  });
+
+  describe('Requested Question Counts Fulfillment (5, 10, 15, 20)', () => {
+    it('fulfills exact requested count of 5 for MCQs', async () => {
+      const questions = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'test_user_counts',
+        category: 'Programming Languages',
+        skill: 'Python',
+        difficulty: 'medium',
+        count: 5,
+        mode: 'mcq'
+      });
+
+      expect(questions).toHaveLength(5);
+      const uniquePrompts = new Set(questions.map(q => normalizeQuestionText(q.question)));
+      expect(uniquePrompts.size).toBe(5);
+      for (const q of questions) {
+        expect(validateQuestionFormat(q)).toBe(true);
+      }
+    });
+
+    it('fulfills exact requested count of 10 for MCQs', async () => {
+      const questions = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'test_user_counts',
+        category: 'Programming Languages',
+        skill: 'JavaScript',
+        difficulty: 'medium',
+        count: 10,
+        mode: 'mcq'
+      });
+
+      expect(questions).toHaveLength(10);
+      const uniquePrompts = new Set(questions.map(q => normalizeQuestionText(q.question)));
+      expect(uniquePrompts.size).toBe(10);
+    });
+
+    it('fulfills exact requested count of 15 for MCQs', async () => {
+      const questions = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'test_user_counts',
+        category: 'Web Development',
+        skill: 'React',
+        difficulty: 'medium',
+        count: 15,
+        mode: 'mcq'
+      });
+
+      expect(questions).toHaveLength(15);
+      const uniquePrompts = new Set(questions.map(q => normalizeQuestionText(q.question)));
+      expect(uniquePrompts.size).toBe(15);
+    });
+
+    it('fulfills exact requested count of 20 for MCQs', async () => {
+      const questions = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'test_user_counts',
+        category: 'Databases',
+        skill: 'SQL',
+        difficulty: 'medium',
+        count: 20,
+        mode: 'mcq'
+      });
+
+      expect(questions).toHaveLength(20);
+      const uniquePrompts = new Set(questions.map(q => normalizeQuestionText(q.question)));
+      expect(uniquePrompts.size).toBe(20);
+    });
+
+    it('fulfills exact requested counts for Coding Challenges (5, 10, 15, 20)', async () => {
+      for (const count of [5, 10, 15, 20]) {
+        const challenges = await generateTargetedPracticeQuestions({
+          applicationId: '507f1f77bcf86cd799439011',
+          firebaseUid: 'test_user_coding_counts',
+          category: 'Programming Languages',
+          skill: 'Python',
+          difficulty: 'medium',
+          count,
+          mode: 'coding_challenges'
+        });
+
+        expect(challenges).toHaveLength(count);
+        const uniqueStatements = new Set(challenges.map(c => normalizeQuestionText(c.problemStatement || c.question)));
+        expect(uniqueStatements.size).toBe(count);
+
+        for (const c of challenges) {
+          expect(validateQuestionFormat(c)).toBe(true);
+          expect(c.starterCode).toBeTruthy();
+          expect(Array.isArray(c.testCases)).toBe(true);
+          expect(c.testCases.length).toBeGreaterThan(0);
+          expect(c.correctAnswer).toBeTruthy();
+        }
+      }
+    });
+  });
+
+  describe('Repeated Question Avoidance & Fresh Question Prioritization', () => {
+    it('serves completely fresh unserved questions across consecutive sessions', async () => {
+      // Session 1: 5 questions
+      const session1 = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'user_session_tracker',
+        skill: 'Python',
+        difficulty: 'medium',
+        count: 5,
+        mode: 'mcq'
+      });
+
+      expect(session1).toHaveLength(5);
+
+      // Session 2: 5 questions excluding session 1
+      const session2 = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'user_session_tracker',
+        skill: 'Python',
+        difficulty: 'medium',
+        count: 5,
+        mode: 'mcq',
+        existingQuestions: session1
+      });
+
+      expect(session2).toHaveLength(5);
+
+      // Ensure 0 overlap between session 1 and session 2
+      for (const q2 of session2) {
+        expect(isDuplicateOrNearDuplicate(q2, session1)).toBe(false);
+      }
+    });
+
+    it('handles pool exhaustion gracefully when all questions are excluded', () => {
+      const dummyPool = [
+        { _id: '1', question: 'Question 1', difficulty: 'medium' },
+        { _id: '2', question: 'Question 2', difficulty: 'medium' }
+      ];
+
+      const result = selectDistinctQuestions({
+        pool: dummyPool,
+        count: 5,
+        excludeIds: ['1', '2']
+      });
+
+      expect(result).toEqual([]);
+      expect(result.length).toBe(0);
+    });
+
+    it('restores full question availability cleanly upon history reset', async () => {
+      // After resetting, excludeIds and excludeQuestions are cleared
+      const resetQuestions = await generateTargetedPracticeQuestions({
+        applicationId: '507f1f77bcf86cd799439011',
+        firebaseUid: 'user_reset_test',
+        skill: 'Python',
+        difficulty: 'medium',
+        count: 10,
+        mode: 'mcq',
+        existingQuestions: [],
+        excludeIds: []
+      });
+
+      expect(resetQuestions).toHaveLength(10);
     });
   });
 });

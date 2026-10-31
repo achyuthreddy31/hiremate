@@ -82,7 +82,7 @@ export default function ReadinessChecklistPage() {
           <button
             onClick={handleRecalculate}
             disabled={calculating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm transition-all shadow hover:shadow-blue-500/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={15} className={calculating ? "animate-spin" : ""} />
             <span>{calculating ? 'Recomputing Readiness...' : 'Update Readiness & Checklist'}</span>
@@ -101,11 +101,11 @@ export default function ReadinessChecklistPage() {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-4 border-b border-[var(--border-subtle)]">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Interview Readiness Score</span>
-                <div className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">
+                <div className="text-4xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">
                   {readiness.totalScore}%
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                 {readiness.statusSummary}
               </span>
             </div>
@@ -161,7 +161,7 @@ export default function ReadinessChecklistPage() {
                     role="checkbox"
                     aria-checked={isDone}
                     tabIndex={0}
-                    className={`p-4 rounded-xl border cursor-pointer flex items-start gap-3.5 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+                    className={`p-4 rounded-xl border cursor-pointer flex items-start gap-3.5 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
                       isDone
                         ? 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-500/40'
                         : 'bg-[var(--bg-primary)] border-[var(--border-subtle)] hover:border-slate-400'
@@ -171,7 +171,7 @@ export default function ReadinessChecklistPage() {
                       className={`mt-0.5 w-5 h-5 rounded-md shrink-0 flex items-center justify-center border-2 transition-colors ${
                         isDone
                           ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-indigo-500'
+                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:border-blue-500'
                       }`}
                     >
                       {isDone && <CheckCircle2 size={13} className="text-white" />}

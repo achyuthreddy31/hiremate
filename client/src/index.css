@@ -5,17 +5,49 @@
 :root {
   --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
   --text-primary: #0f172a;
   --text-muted: #64748b;
   --border-subtle: #e2e8f0;
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+  --accent-surface: #eff6ff;
+  --accent-border: #bfdbfe;
+
+  /* Modern Blue Professional Sidebar (Light Theme - Deep Navy) */
+  --sidebar-bg: #142B4D;
+  --sidebar-border: #1E3A5F;
+  --sidebar-card-bg: #0F223D;
+  --sidebar-card-border: #1F3E68;
+  --sidebar-text: #F8FAFC;
+  --sidebar-text-muted: #94A3B8;
+  --sidebar-hover-bg: rgba(37, 99, 235, 0.18);
+  --sidebar-active-bg: #2563EB;
+  --sidebar-active-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
 .dark {
-  --bg-primary: #090d16;
-  --bg-surface: #111827;
+  --bg-primary: #0b1329;
+  --bg-surface: #111c38;
+  --bg-surface-elevated: #162447;
   --text-primary: #f8fafc;
   --text-muted: #94a3b8;
-  --border-subtle: #1f2937;
+  --border-subtle: #1e2d4a;
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+  --accent-surface: #172554;
+  --accent-border: #1e40af;
+
+  /* Modern Blue Professional Sidebar (Dark Theme - Dark Navy) */
+  --sidebar-bg: #10233F;
+  --sidebar-border: #173054;
+  --sidebar-card-bg: #0C1B33;
+  --sidebar-card-border: #1A3860;
+  --sidebar-text: #F8FAFC;
+  --sidebar-text-muted: #94A3B8;
+  --sidebar-hover-bg: rgba(59, 130, 246, 0.18);
+  --sidebar-active-bg: #2563EB;
+  --sidebar-active-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
 }
 
 html {
@@ -30,6 +62,87 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Modern Blue Professional Component Utilities */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.75rem;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px 0 rgba(37, 99, 235, 0.25);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--accent-surface);
+  border-color: var(--accent-border);
+  color: var(--accent-primary);
+}
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-modern {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 200ms ease-in-out;
+}
+.card-modern:hover {
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 /* Reduced motion support */

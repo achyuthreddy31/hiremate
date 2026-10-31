@@ -20,34 +20,74 @@ import { buildInterviewPrepDataset } from './interviewPrep.service.js';
 import { calculateInterviewReadinessScore } from './scoring/interviewReadinessScore.js';
 
 /**
- * On server start, marks any 'processing' jobs older than 10 minutes as failed (Section 7).
+ * On server start, marks any orphaned 'processing' jobs as failed so they can be resumed cleanly.
+ * Validates database connectivity and preserves genuinely fresh active jobs.
  */
-export async function cleanStaleJobsOnStartup() {
+export async function cleanStaleJobsOnStartup(options = {}) {
+  const thresholdMinutes = options.thresholdMinutes || 5;
   try {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const staleThreshold = new Date(Date.now() - thresholdMinutes * 60 * 1000);
     const result = await GenerationJob.updateMany(
-      { status: 'processing', updatedAt: { $lt: tenMinutesAgo } },
-      { $set: { status: 'failed', 'stages.$[elem].status': 'failed', 'stages.$[elem].error': 'Job timed out on server restart' } },
+      {
+        status: 'processing',
+        updatedAt: { $lt: staleThreshold }
+      },
+      {
+        $set: {
+          status: 'failed',
+          'stages.$[elem].status': 'failed',
+          'stages.$[elem].error': 'Job interrupted by process restart or timeout. Ready to resume.'
+        }
+      },
       { arrayFilters: [{ 'elem.status': 'processing' }] }
     );
     if (result.modifiedCount > 0) {
-      console.log(`Cleaned ${result.modifiedCount} stale background generation jobs on startup.`);
+      console.log(`[WorkflowStartup] Cleaned ${result.modifiedCount} stale in-flight generation jobs on startup.`);
     }
+    return { success: true, cleanedCount: result.modifiedCount };
   } catch (err) {
-    console.warn('Stale job cleanup notice:', err.message);
+    console.error('[WorkflowStartup] Stale job cleanup notice:', err.message);
+    return { success: false, error: err.message };
   }
+}
+
+/**
+ * Cancels an active or pending workflow.
+ */
+export async function cancelWorkflow(jobId, firebaseUid) {
+  const job = await GenerationJob.findOne({ _id: jobId, firebaseUid });
+  if (!job) return null;
+  if (job.status === 'completed' || job.status === 'failed') {
+    return job; // Terminal state already reached
+  }
+
+  job.status = 'cancelled';
+  for (const st of job.stages) {
+    if (st.status === 'processing' || st.status === 'pending') {
+      st.status = 'cancelled';
+      st.error = 'Workflow cancelled by user.';
+    }
+  }
+  await job.save();
+  return job;
 }
 
 /**
  * Executes or resumes a staged workflow.
  * Strictly preserves completed stages and retries ONLY failed ones.
+ * Guarantees every execution reaches a terminal state (completed, failed, or cancelled).
  */
 export async function executeGenerationWorkflow(jobId) {
-  const job = await GenerationJob.findById(jobId);
-  if (!job) return;
-
-  job.status = 'processing';
-  await job.save();
+  // Atomic acquisition: ensure only one runner process handles this job
+  const job = await GenerationJob.findOneAndUpdate(
+    { _id: jobId, status: { $ne: 'processing' } },
+    { $set: { status: 'processing', startedAt: new Date() } },
+    { new: true }
+  );
+  if (!job) {
+    // Either already processing or doesn't exist
+    return;
+  }
 
   const { applicationId, firebaseUid } = job;
   const app = await Application.findOne({ _id: applicationId, firebaseUid });
@@ -61,6 +101,12 @@ export async function executeGenerationWorkflow(jobId) {
   for (let i = 0; i < job.stages.length; i++) {
     const stage = job.stages[i];
 
+    // Check if workflow was cancelled asynchronously
+    const freshJob = await GenerationJob.findById(jobId).select('status');
+    if (!freshJob || freshJob.status === 'cancelled') {
+      return;
+    }
+
     // Preserve completed stages! Never rerun unless user explicitly requests
     if (stage.status === 'completed') {
       continue;
@@ -70,26 +116,45 @@ export async function executeGenerationWorkflow(jobId) {
     stage.status = 'processing';
     await job.save();
 
-    try {
-      await executeIndividualStage({ stageName: stage.name, applicationId, firebaseUid, app });
+    let attempts = 0;
+    const maxRetries = 2;
+    let stageSuccess = false;
+
+    while (attempts <= maxRetries && !stageSuccess) {
+      try {
+        attempts++;
+        await Promise.race([
+          executeIndividualStage({ stageName: stage.name, applicationId, firebaseUid, app }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Stage ${stage.name} execution timed out`)), 60000)
+          )
+        ]);
+        stageSuccess = true;
+      } catch (err) {
+        if (attempts > maxRetries) {
+          stage.status = 'failed';
+          stage.error = err.message;
+          stage.retries = (stage.retries || 0) + attempts;
+          job.status = 'failed';
+          await job.save();
+          console.error(`Stage ${stage.name} failed after ${attempts} attempts:`, err.message);
+          return; // Stop at failed stage boundary
+        }
+      }
+    }
+
+    if (stageSuccess) {
       stage.status = 'completed';
       stage.error = null;
       stage.completedAt = new Date();
       job.progress = Math.round(((i + 1) / job.stages.length) * 100);
       await job.save();
-    } catch (err) {
-      stage.status = 'failed';
-      stage.error = err.message;
-      stage.retries = (stage.retries || 0) + 1;
-      job.status = 'failed';
-      await job.save();
-      console.error(`Stage ${stage.name} failed:`, err.message);
-      return; // Stop at failed stage boundary
     }
   }
 
   job.status = 'completed';
   job.progress = 100;
+  job.completedAt = new Date();
   await job.save();
 }
 
@@ -263,7 +328,7 @@ async function executeIndividualStage({ stageName, applicationId, firebaseUid, a
         },
         {
           category: 'company_research',
-          title: `Study ${app.companyName} Values & Pass Knowledge Quiz`,
+          title: `Study ${app.companyName} Values & Review Hub Sections`,
           priority: 'important',
           status: 'pending',
           reason: 'Demonstrate deep organizational alignment.'
