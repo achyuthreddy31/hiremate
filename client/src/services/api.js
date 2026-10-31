@@ -18,11 +18,13 @@ apiClient.interceptors.request.use(async (config) => {
       const token = await user.getIdToken();
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      // Check localStorage for offline / mock user token
-      const mockUid = localStorage.getItem('hiremate_mock_uid');
-      if (mockUid) {
-        config.headers.Authorization = `Bearer mock-uid-${mockUid}`;
-      }
+      // Only allow mock UID fallback in local development
+  if (import.meta.env.DEV) {
+    const mockUid = localStorage.getItem('hiremate_mock_uid');
+    if (mockUid) {
+      config.headers.Authorization = `Bearer mock-uid-${mockUid}`;
+    }
+  }
     }
   } catch (err) {
     console.warn('Error obtaining auth token:', err);
