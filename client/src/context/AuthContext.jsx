@@ -14,17 +14,18 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // If mock UID in local storage for local testing
-    const mockUid = localStorage.getItem('hiremate_mock_uid');
-    if (mockUid && !currentUser) {
-      setCurrentUser({
-        uid: mockUid,
-        email: `${mockUid}@hiremate.ai`,
-        displayName: 'Test Candidate'
-      });
-      setLoading(false);
-      return;
+ useEffect(() => {
+    if (import.meta.env.DEV) {
+      const mockUid = localStorage.getItem('hiremate_mock_uid');
+      if (mockUid && !currentUser) {
+        setCurrentUser({
+          uid: mockUid,
+          email: `${mockUid}@hiremate.ai`,
+          displayName: 'Test Candidate'
+        });
+        setLoading(false);
+        return;
+      }
     }
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
