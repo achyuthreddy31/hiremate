@@ -359,9 +359,6 @@ export default function PracticePage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Practice & Coding</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Dynamic technical quizzes and auto-graded coding challenges across core software engineering domains.
-            </p>
           </div>
           <button
             onClick={() => handleStartSession(false)}

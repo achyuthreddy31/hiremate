@@ -109,9 +109,6 @@ export default function JobMatchPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Job Analysis & Alignment Score</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Transparent, explainable requirements evaluation computed strictly in backend code.
-            </p>
           </div>
           <button
             onClick={handleRunMatch}

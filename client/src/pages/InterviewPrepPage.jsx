@@ -97,9 +97,6 @@ export default function InterviewPrepPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Structured Interview Preparation</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Curated technical and behavioral questions, STAR guidance, and private self-tracking for {app?.companyName || 'your target company'}.
-            </p>
           </div>
           <button
             onClick={handleGenerate}

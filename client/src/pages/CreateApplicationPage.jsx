@@ -68,9 +68,6 @@ export default function CreateApplicationPage() {
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Create Target Job Application</h1>
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-            Enter the details and real job description. HireMate Nexus will analyze requirements and structure your prep.
-          </p>
         </div>
 
         {error && (

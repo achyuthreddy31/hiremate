@@ -100,8 +100,8 @@ export default function AppLayout({ children, currentApplication }) {
 
   const navItems = [
     { label: 'Overview', path: activeAppId ? `/app/${activeAppId}/dashboard` : '/dashboard', icon: TrendingUp },
-    { label: 'Target Job & Match', path: activeAppId ? `/app/${activeAppId}/match` : '/dashboard', icon: Briefcase },
     { label: 'Resume & Quality', path: activeAppId ? `/app/${activeAppId}/resume` : '/dashboard', icon: FileText },
+    { label: 'Target Job & Match', path: activeAppId ? `/app/${activeAppId}/match` : '/dashboard', icon: Briefcase },
     { label: 'Roadmap & Learning', path: activeAppId ? `/app/${activeAppId}/roadmap` : '/dashboard', icon: Compass },
     { label: 'Practice & Coding', path: activeAppId ? `/app/${activeAppId}/practice` : '/dashboard', icon: Cpu },
     { label: 'Company Research', path: activeAppId ? `/app/${activeAppId}/company` : '/dashboard', icon: BookOpen },
@@ -161,37 +161,37 @@ export default function AppLayout({ children, currentApplication }) {
             </div>
 
             {/* Current Target Application Widget in Sidebar */}
-            <div className="mb-4 h-[74px] flex flex-col justify-center">
+            <div className="mb-4">
               {activeApp ? (
-                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] relative overflow-hidden h-[74px] flex flex-col justify-center">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
-                      <Target size={11} />
+                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] shadow-sm">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                      <Target size={11} className="shrink-0" />
                       Target Role
                     </span>
                     <Link
                       to="/dashboard"
-                      className="text-[11px] text-blue-400 hover:underline flex items-center gap-0.5"
+                      className="text-[11px] font-medium text-blue-400 hover:text-blue-300 hover:underline shrink-0"
                       title="Switch Target Application"
                     >
                       Switch
                     </Link>
                   </div>
-                  <div className="font-bold text-sm text-white truncate" title={activeApp.companyName}>
+                  <div className="font-bold text-sm text-white break-words leading-snug">
                     {activeApp.companyName}
                   </div>
-                  <div className="text-xs text-[var(--sidebar-text-muted)] truncate" title={activeApp.jobTitle}>
+                  <div className="text-xs text-[var(--sidebar-text-muted)] break-words leading-relaxed mt-1">
                     {activeApp.jobTitle}
                   </div>
                 </div>
               ) : routeAppId ? (
-                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] h-[74px] flex flex-col justify-center gap-1.5 animate-pulse">
+                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] min-h-[74px] flex flex-col justify-center gap-1.5 animate-pulse">
                   <div className="h-2.5 bg-blue-900/40 rounded w-16" />
                   <div className="h-3.5 bg-blue-900/50 rounded w-28" />
                   <div className="h-2.5 bg-blue-900/40 rounded w-20" />
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] h-[74px] flex flex-col justify-center">
+                <div className="p-3 rounded-xl bg-[var(--sidebar-card-bg)] border border-[var(--sidebar-card-border)] min-h-[74px] flex flex-col justify-center">
                   <div className="text-[11px] font-medium text-[var(--sidebar-text-muted)] flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-slate-200">
                       <Layers size={13} className="text-blue-400" />

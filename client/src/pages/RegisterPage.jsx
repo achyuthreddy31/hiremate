@@ -48,7 +48,6 @@ export default function RegisterPage() {
             N
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create your Account</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Start preparing for your target job application with HireMate Nexus</p>
         </div>
 
         {error && (

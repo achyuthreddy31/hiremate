@@ -145,9 +145,6 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Candidate Profile & Account</h1>
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-            Manage your verified skills, account credentials, and platform authentication.
-          </p>
         </div>
 
         {message && (

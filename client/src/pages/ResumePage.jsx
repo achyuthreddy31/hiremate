@@ -101,9 +101,6 @@ export default function ResumePage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Resume & In-Memory Analysis</h1>
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-            Processed strictly in memory with %PDF- header verification. Analyzes bullet action verbs, contact details, and ATS structure.
-          </p>
         </div>
 
         {error && (
@@ -157,7 +154,6 @@ export default function ResumePage() {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-4 border-b border-[var(--border-subtle)]">
               <div>
                 <h3 className="font-extrabold text-base">Deterministic Quality Checklist</h3>
-                <p className="text-xs text-[var(--text-muted)]">Rule-based scoring formula evaluating resume construction</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">

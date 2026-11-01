@@ -75,9 +75,6 @@ export default function ReadinessChecklistPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Interview Readiness & Final Checklist</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Active preparation effort across 7 core areas and finalized job-specific readiness checklist.
-            </p>
           </div>
           <button
             onClick={handleRecalculate}

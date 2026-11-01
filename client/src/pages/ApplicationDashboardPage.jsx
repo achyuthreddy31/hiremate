@@ -314,9 +314,6 @@ export default function ApplicationDashboardPage() {
                   </span>
                 ) : null}
               </div>
-              <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
-                Deterministic calculation across technical skills, experience years, relevant projects, education level, keywords, and resume quality.
-              </p>
             </div>
 
             <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">
@@ -342,9 +339,6 @@ export default function ApplicationDashboardPage() {
                   {readiness?.statusSummary || '0 of 7 areas started'}
                 </span>
               </div>
-              <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
-                Active preparation effort metric across practice tests, auto-graded coding, questions prepared, company knowledge, and completed checklist tasks.
-              </p>
             </div>
 
             <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex justify-between items-center text-xs">

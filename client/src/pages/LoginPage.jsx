@@ -34,7 +34,6 @@ export default function LoginPage() {
             N
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Welcome to HireMate Nexus</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Targeted, evidence-aware preparation for your target job application</p>
         </div>
 
         {error && (

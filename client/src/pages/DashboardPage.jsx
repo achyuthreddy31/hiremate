@@ -277,9 +277,6 @@ export default function DashboardPage() {
                   <h4 className="font-bold text-sm sm:text-base">
                     {readinessScore >= 80 ? 'Exceptional Candidate Preparedness' : readinessScore >= 60 ? 'Strong Preparation Underway' : 'Active Preparation Required'}
                   </h4>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Calculated across target job requirements match, resume impact, coding drills, and checklist items.
-                  </p>
                 </div>
               </div>
 
@@ -437,9 +434,6 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <h3 className="text-xl font-extrabold tracking-tight">Target Job Applications</h3>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                Deterministic ATS matches, requirement gap breakdowns, and company preparation hubs.
-              </p>
             </div>
             <Link
               to="/applications/new"
@@ -627,9 +621,6 @@ export default function DashboardPage() {
         <div className="space-y-3.5">
           <div>
             <h3 className="text-xl font-extrabold tracking-tight">Quick Actions & Preparation Modules</h3>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">
-              Direct access to all specialized preparation workflows across your target roles.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">

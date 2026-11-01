@@ -156,9 +156,6 @@ export default function CompanyResearchPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Company Research Hub</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Grounded company intelligence and strategic breakdown for <span className="font-bold text-[var(--text-primary)]">{app?.companyName || 'your target company'}</span>.
-            </p>
           </div>
           <button
             onClick={handleGenerate}
@@ -201,9 +198,6 @@ export default function CompanyResearchPage() {
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div>
                   <h3 className="font-extrabold text-base">Company Knowledge Readiness Progress</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Review each of the 7 strategic hub areas below to maximize your Interview Readiness score.
-                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">

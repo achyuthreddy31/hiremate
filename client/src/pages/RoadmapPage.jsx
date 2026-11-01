@@ -81,9 +81,6 @@ export default function RoadmapPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Dated Preparation Roadmap</h1>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1">
-              Time allocated progressively across identified gaps. Each day structures 3 sequential stages: Fundamentals, Guided Practice, and Advanced Challenges.
-            </p>
           </div>
           <button
             onClick={handleGenerate}
