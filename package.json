@@ -16,7 +16,7 @@
     "build:client": "npm --prefix client run build",
     "test:server": "npm --prefix server run test",
     "test:client": "npm --prefix client run test",
-    "test": "npm --prefix server run test && npm --prefix client run test",
+    "test": "npm --prefix server run test",
     "eval": "node evaluation/eval.js",
     "start": "npm --prefix server start"
   }

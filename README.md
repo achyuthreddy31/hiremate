@@ -19,10 +19,10 @@ Resume parsing, skill-gap analysis, learning paths, and AI coaching exist across
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React, Vite, React Router, Tailwind CSS (Dual Light/Dark themes), Axios, React Hook Form, Zod, Recharts, Lucide Icons |
-| **Backend** | Node.js, Express (ES modules), Mongoose, Multer (Memory Storage), `pdf-parse`, Firebase Admin SDK, Helmet, CORS, `express-rate-limit`, Zod |
+| **Frontend** | React, Vite, React Router, Tailwind CSS (Dual Light/Dark themes), Axios, Lucide Icons |
+| **Backend** | Node.js, Express (ES modules), Mongoose, Multer (Memory Storage), `pdf-parse`, Helmet, CORS, `express-rate-limit`, Zod, `bcryptjs`, `jsonwebtoken` |
 | **Database** | MongoDB Atlas |
-| **Authentication** | Firebase Authentication (Client) & Firebase Admin Token Verification (Server) |
+| **Authentication** | Native MongoDB User Authentication with Bcrypt Password Hashing & Secure JWT |
 | **AI Integration** | Gemini API (`@google/genai`) on the server side only |
 | **Testing** | Vitest unit and integration test suites |
 
@@ -83,7 +83,7 @@ Copy `.env.example` to `.env` in the repository root:
 ```bash
 cp .env.example .env
 ```
-Populate your Firebase, MongoDB, and Gemini credentials. (The server includes local mock fallback modes for offline testing).
+Populate your MongoDB, JWT, and Gemini credentials. (The server includes local mock fallback modes for offline testing).
 
 ### Running Tests & Evaluation
 ```bash
@@ -121,11 +121,11 @@ npm --prefix client run dev
 2. Framework Preset: **Vite**.
 3. Build Command: `npm run build`.
 4. Output Directory: `dist`.
-5. Configure Environment Variables: `VITE_API_BASE_URL`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, etc.
+5. Configure Environment Variables: `VITE_API_BASE_URL`.
 
 ### Deploying Backend to Render
 1. Create a new **Web Service** on Render connected to this repository.
 2. Root Directory: leave as repository root (or `/`), because the server imports `shared/` constants via ES module relative paths.
 3. Build Command: `npm --prefix server install`.
 4. Start Command: `npm --prefix server start`.
-5. Environment Variables: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URL=<your-vercel-domain>`, `MONGODB_URI`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `GEMINI_API_KEY`.
+5. Environment Variables: `NODE_ENV=production`, `PORT=5000`, `CLIENT_URL=<your-vercel-domain>`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `MAX_FILE_SIZE`.
