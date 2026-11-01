@@ -1,4 +1,5 @@
 import { runInIsolatedProcess } from '../processSandbox.js';
+import { executeRemotely, isRemoteExecutionConfigured } from '../remoteRunner.js';
 
 /**
  * Builds the standalone JavaScript harness script.
@@ -118,6 +119,17 @@ ${userCode}
  */
 export async function runJavaScript(userCode, testCases, timeoutMs = 3000) {
   const scriptContent = buildJavaScriptHarness(userCode, testCases);
+
+  if (isRemoteExecutionConfigured()) {
+    return executeRemotely({
+      language: 'javascript',
+      version: '18.15.0',
+      fileName: 'solution.js',
+      code: scriptContent,
+      timeoutMs
+    });
+  }
+
   return runInIsolatedProcess({
     command: process.execPath,
     args: ['--max-old-space-size=64'],

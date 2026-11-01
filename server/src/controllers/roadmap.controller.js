@@ -5,6 +5,7 @@ import { LearningRecommendation } from '../models/learningRecommendation.model.j
 import { JobAnalysis } from '../models/jobAnalysis.model.js';
 import { CandidateProfile } from '../models/candidateProfile.model.js';
 import { Resume } from '../models/resume.model.js';
+import { PracticeAttempt } from '../models/practiceAttempt.model.js';
 import { analyzeJobDescription, generateMatchReportData } from '../services/jobAnalysis.service.js';
 import { generateRoadmapPlan, generateRecommendationsForGaps } from '../services/roadmap.service.js';
 
@@ -39,12 +40,16 @@ export async function generateRoadmap(req, res) {
         );
       }
 
-      const resume = await Resume.findOne({ applicationId, firebaseUid: req.user.uid }).select('+extractedText');
+      const [resume, practiceAttempts] = await Promise.all([
+        Resume.findOne({ applicationId, firebaseUid: req.user.uid }).select('+extractedText'),
+        PracticeAttempt.find({ applicationId, firebaseUid: req.user.uid })
+      ]);
       const reportData = generateMatchReportData({
         jobAnalysis,
         candidateProfile: candidateProfile || {},
         resumeQualityChecklist: resume?.qualityChecklist || {},
-        resumeText: resume?.extractedText || ''
+        resumeText: resume?.extractedText || '',
+        practiceAttempts
       });
 
       matchReport = await MatchReport.create({

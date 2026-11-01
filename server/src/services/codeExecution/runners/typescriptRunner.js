@@ -1,4 +1,5 @@
 import { runInIsolatedProcess } from '../processSandbox.js';
+import { executeRemotely, isRemoteExecutionConfigured } from '../remoteRunner.js';
 
 /**
  * Builds the standalone TypeScript harness script.
@@ -103,6 +104,17 @@ ${userCode}
  */
 export async function runTypeScript(userCode, testCases, timeoutMs = 3000) {
   const scriptContent = buildTypeScriptHarness(userCode, testCases);
+
+  if (isRemoteExecutionConfigured()) {
+    return executeRemotely({
+      language: 'typescript',
+      version: '5.0.3',
+      fileName: 'solution.ts',
+      code: scriptContent,
+      timeoutMs
+    });
+  }
+
   return runInIsolatedProcess({
     command: process.execPath,
     args: ['--experimental-strip-types', '--max-old-space-size=64'],

@@ -8,6 +8,7 @@ import { MatchReport } from '../models/matchReport.model.js';
 import { Roadmap } from '../models/roadmap.model.js';
 import { CompanyResearch } from '../models/companyResearch.model.js';
 import { PracticeQuestion } from '../models/practiceQuestion.model.js';
+import { PracticeAttempt } from '../models/practiceAttempt.model.js';
 import { InterviewPreparation } from '../models/interviewPreparation.model.js';
 import { Checklist } from '../models/checklist.model.js';
 import { ReadinessSnapshot } from '../models/readinessSnapshot.model.js';
@@ -187,10 +188,11 @@ async function executeIndividualStage({ stageName, applicationId, firebaseUid, a
     case 'compare_resume_with_job':
     case 'calculate_job_match_score':
     case 'generate_skill_gaps': {
-      const [jobAnalysis, profile, resume] = await Promise.all([
+      const [jobAnalysis, profile, resume, practiceAttempts] = await Promise.all([
         JobAnalysis.findOne({ applicationId, firebaseUid }),
         CandidateProfile.findOne({ applicationId, firebaseUid }),
-        Resume.findOne({ applicationId, firebaseUid }).select('+extractedText')
+        Resume.findOne({ applicationId, firebaseUid }).select('+extractedText'),
+        PracticeAttempt.find({ applicationId, firebaseUid })
       ]);
       if (!jobAnalysis) throw new Error('Job analysis required before match calculation.');
 
@@ -198,7 +200,8 @@ async function executeIndividualStage({ stageName, applicationId, firebaseUid, a
         jobAnalysis,
         candidateProfile: profile || {},
         resumeQualityChecklist: resume?.qualityChecklist || {},
-        resumeText: resume?.extractedText || ''
+        resumeText: resume?.extractedText || '',
+        practiceAttempts
       });
 
       await MatchReport.findOneAndUpdate(

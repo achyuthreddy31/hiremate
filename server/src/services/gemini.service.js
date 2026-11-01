@@ -1,4 +1,4 @@
-﻿import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { env } from '../config/env.js';
 
 let aiInstance = null;
@@ -35,17 +35,19 @@ export function verifyQuoteInSource(quote, sourceText) {
 
 /**
  * Standard robust Gemini call wrapper with structured schema and retry.
+ * Handles both getter property (v0.2.0 @google/genai SDK) and method variants of response.text.
  */
 export async function callGeminiStructured({
   systemInstruction,
   prompt,
   schema,
-  maxRetries = 2
+  maxRetries = 2,
+  client = undefined
 }) {
-  const client = getGeminiClient();
+  const activeClient = client !== undefined ? client : getGeminiClient();
 
   // If no live Gemini key configured, return null to let caller use deterministic fallback / mock
-  if (!client) {
+  if (!activeClient) {
     return null;
   }
 
@@ -54,7 +56,7 @@ export async function callGeminiStructured({
 
   while (attempt <= maxRetries) {
     try {
-      const response = await client.models.generateContent({
+      const response = await activeClient.models.generateContent({
         model: env.GEMINI_MODEL || 'gemini-2.5-flash',
         contents: [
           { role: 'user', parts: [{ text: currentPrompt }] }
@@ -65,8 +67,28 @@ export async function callGeminiStructured({
         }
       });
 
-      const rawText = response.text?.() || response.text || '';
-      const parsedJson = JSON.parse(rawText);
+      // Compatible response text extraction across SDK variants (getter vs function vs parts)
+      let rawText = '';
+      if (typeof response?.text === 'function') {
+        rawText = response.text() || '';
+      } else if (typeof response?.text === 'string') {
+        rawText = response.text;
+      } else if (response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        rawText = response.candidates[0].content.parts[0].text;
+      }
+
+      if (!rawText || !rawText.trim()) {
+        throw new Error('Gemini API returned an empty text response.');
+      }
+
+      // Strip markdown code fences if model wrapped JSON output
+      const cleanedText = rawText
+        .trim()
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+
+      const parsedJson = JSON.parse(cleanedText);
 
       if (schema) {
         const validated = schema.parse(parsedJson);
@@ -76,10 +98,16 @@ export async function callGeminiStructured({
       return parsedJson;
     } catch (err) {
       attempt++;
+      // Sanitize error message to prevent logging any potential API key values
+      const safeErrorMessage = err.message
+        ? err.message.replace(/key=[a-zA-Z0-9_\-]+/gi, 'key=***')
+        : 'Unknown error';
+
       if (attempt > maxRetries) {
-        throw new Error(`Gemini structured call failed after ${maxRetries} retries: ${err.message}`);
+        console.warn(`[GeminiService] Structured AI generation failed after ${maxRetries} attempts: ${safeErrorMessage}`);
+        throw new Error(`Gemini structured call failed after ${maxRetries} retries: ${safeErrorMessage}`);
       }
-      currentPrompt = `${prompt}\n\n[CORRECTION NOTICE: Previous response was invalid. Error: ${err.message}. Please output strictly valid JSON conforming to the schema.]`;
+      currentPrompt = `${prompt}\n\n[CORRECTION NOTICE: Previous response was invalid. Error: ${safeErrorMessage}. Please output strictly valid JSON conforming to the schema.]`;
     }
   }
 }

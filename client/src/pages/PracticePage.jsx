@@ -69,6 +69,8 @@ const MODE_OPTIONS = [
   { label: 'Coding challenges', value: 'coding_challenges' }
 ];
 
+export const SUPPORTED_CODING_LANGUAGES = ['JavaScript', 'TypeScript', 'Python'];
+
 export default function PracticePage() {
   const { applicationId } = useParams();
   const navigate = useNavigate();
@@ -111,10 +113,18 @@ export default function PracticePage() {
   // Synchronize available skills when category changes
   const handleCategoryChange = (newCat) => {
     setSelectedCategory(newCat);
-    const available = newCat === 'Roadmap Topics'
+    let available = newCat === 'Roadmap Topics'
       ? roadmapTasks.map(t => t.topic)
       : (CATEGORIES_DATA[newCat] || []);
-    const newSkill = available[0] || '';
+
+    if (selectedMode === 'coding_challenges' && newCat === 'Programming Languages') {
+      available = available.filter(s => SUPPORTED_CODING_LANGUAGES.includes(s));
+    }
+
+    const newSkill = available.includes(selectedSkill)
+      ? selectedSkill
+      : (available[0] || 'JavaScript');
+
     setSelectedSkill(newSkill);
     setSkillSearch('');
     setRevealedSolution(null);
@@ -158,7 +168,16 @@ export default function PracticePage() {
     setSubmissionResult(null);
     setSelectedAnswer('');
     setCurrentIndex(0);
-    handleStartSession(false, { mode: newMode });
+
+    let skillToUse = selectedSkill;
+    if (newMode === 'coding_challenges') {
+      if (selectedCategory === 'Programming Languages' && !SUPPORTED_CODING_LANGUAGES.includes(selectedSkill)) {
+        skillToUse = 'JavaScript';
+        setSelectedSkill('JavaScript');
+      }
+    }
+
+    handleStartSession(false, { mode: newMode, skill: skillToUse });
   };
 
   const fetchPracticeData = async () => {
@@ -334,9 +353,12 @@ export default function PracticePage() {
     }
   };
 
-  const availableSkills = selectedCategory === 'Roadmap Topics'
+  const rawSkills = selectedCategory === 'Roadmap Topics'
     ? roadmapTasks.map(t => t.topic)
     : (CATEGORIES_DATA[selectedCategory] || []);
+  const availableSkills = (selectedMode === 'coding_challenges' && selectedCategory === 'Programming Languages')
+    ? rawSkills.filter(s => SUPPORTED_CODING_LANGUAGES.includes(s))
+    : rawSkills;
   const filteredSkills = availableSkills.filter(s =>
     s.toLowerCase().includes(skillSearch.toLowerCase())
   );

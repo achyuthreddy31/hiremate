@@ -161,27 +161,56 @@ export async function updateResumeData(req, res) {
  * Merges User profile and parsed Resume (userVerified edits win).
  */
 export async function syncCandidateProfile(firebaseUid, applicationId, resumeParsedData) {
-  const user = await User.findOne({ firebaseUid });
+  const isObjId = mongoose.Types.ObjectId.isValid(firebaseUid);
+  const user = await User.findOne({
+    $or: [
+      { firebaseUid },
+      ...(isObjId ? [{ _id: firebaseUid }] : [])
+    ]
+  });
+
+  const existingProfile = await CandidateProfile.findOne({ applicationId, firebaseUid });
 
   const skillsMap = new Map();
 
-  // 1. Add skills from base user profile
-  if (user && Array.isArray(user.skills)) {
-    for (const skillName of user.skills) {
-      skillsMap.set(skillName.toLowerCase(), {
-        name: skillName,
-        normalizedName: skillName,
-        source: 'profile',
-        userVerified: true
-      });
+  // 1. Preserve existing user-verified skills first
+  if (existingProfile && Array.isArray(existingProfile.skills)) {
+    for (const s of existingProfile.skills) {
+      if (s.userVerified) {
+        const key = (s.normalizedName || s.name).toLowerCase();
+        skillsMap.set(key, {
+          name: s.name,
+          normalizedName: s.normalizedName || s.name,
+          category: s.category || 'other',
+          source: s.source || 'profile',
+          userVerified: true
+        });
+      }
     }
   }
 
-  // 2. Add skills from resume (userVerified wins if duplicate)
+  // 2. Add skills from base user profile
+  if (user && Array.isArray(user.skills)) {
+    for (const skillName of user.skills) {
+      const key = skillName.toLowerCase();
+      if (!skillsMap.has(key)) {
+        skillsMap.set(key, {
+          name: skillName,
+          normalizedName: skillName,
+          category: 'other',
+          source: 'profile',
+          userVerified: true
+        });
+      }
+    }
+  }
+
+  // 3. Add skills from resume (userVerified wins if duplicate)
   if (resumeParsedData && Array.isArray(resumeParsedData.skills)) {
     for (const s of resumeParsedData.skills) {
       const key = (s.normalizedName || s.name).toLowerCase();
-      if (!skillsMap.has(key) || s.userVerified) {
+      const existing = skillsMap.get(key);
+      if (!existing || (!existing.userVerified && s.userVerified)) {
         skillsMap.set(key, {
           name: s.name,
           normalizedName: s.normalizedName || s.name,
@@ -193,32 +222,66 @@ export async function syncCandidateProfile(firebaseUid, applicationId, resumePar
     }
   }
 
-  // Consolidate experience & calculate total years
-  const experienceList = [
-    ...(user?.experience || []),
-    ...(resumeParsedData?.experience || [])
-  ];
+  // Consolidate experience & calculate total years without dropping user-verified data
+  const experienceList = (resumeParsedData?.experience && resumeParsedData.experience.length > 0)
+    ? resumeParsedData.experience
+    : (existingProfile?.experience && existingProfile.experience.length > 0)
+      ? existingProfile.experience
+      : (user?.experience || []);
+
   const calculatedYears = calculateCandidateExperienceYears(experienceList);
+
+  const projectsList = (resumeParsedData?.projects && resumeParsedData.projects.length > 0)
+    ? resumeParsedData.projects
+    : (existingProfile?.projects && existingProfile.projects.length > 0)
+      ? existingProfile.projects
+      : (user?.projects || []);
+
+  const educationList = (resumeParsedData?.education && resumeParsedData.education.length > 0)
+    ? resumeParsedData.education
+    : (existingProfile?.education && existingProfile.education.length > 0)
+      ? existingProfile.education
+      : (user?.education || []);
+
+  const certificationsList = (resumeParsedData?.certifications && resumeParsedData.certifications.length > 0)
+    ? resumeParsedData.certifications
+    : (existingProfile?.certifications && existingProfile.certifications.length > 0)
+      ? existingProfile.certifications
+      : (user?.certifications || []);
+
+  let highestEducationLevel = 'bachelor';
+  const levelPriority = { doctorate: 5, master: 4, bachelor: 3, diploma: 2, other: 1 };
+  if (educationList.length > 0) {
+    let topRank = 0;
+    for (const edu of educationList) {
+      const rank = levelPriority[edu.level] || 1;
+      if (rank > topRank) {
+        topRank = rank;
+        highestEducationLevel = edu.level || 'bachelor';
+      }
+    }
+  }
 
   const profile = await CandidateProfile.findOneAndUpdate(
     { applicationId, firebaseUid },
     {
       firebaseUid,
       applicationId,
-      fullName: resumeParsedData?.contactDetails?.fullName?.value || user?.name || '',
-      email: resumeParsedData?.contactDetails?.email?.value || user?.email || '',
-      phone: resumeParsedData?.contactDetails?.phone?.value || '',
+      fullName: resumeParsedData?.contactDetails?.fullName?.value || user?.name || existingProfile?.fullName || '',
+      email: resumeParsedData?.contactDetails?.email?.value || user?.email || existingProfile?.email || '',
+      phone: resumeParsedData?.contactDetails?.phone?.value || existingProfile?.phone || '',
       links: {
-        github: resumeParsedData?.contactDetails?.links?.github?.value || user?.links?.github || '',
-        linkedin: resumeParsedData?.contactDetails?.links?.linkedin?.value || user?.links?.linkedin || '',
-        portfolio: resumeParsedData?.contactDetails?.links?.portfolio?.value || user?.links?.portfolio || ''
+        github: resumeParsedData?.contactDetails?.links?.github?.value || user?.links?.github || existingProfile?.links?.github || '',
+        linkedin: resumeParsedData?.contactDetails?.links?.linkedin?.value || user?.links?.linkedin || existingProfile?.links?.linkedin || '',
+        portfolio: resumeParsedData?.contactDetails?.links?.portfolio?.value || user?.links?.portfolio || existingProfile?.links?.portfolio || ''
       },
       skills: Array.from(skillsMap.values()),
       experience: experienceList,
-      projects: [...(user?.projects || []), ...(resumeParsedData?.projects || [])],
-      education: [...(user?.education || []), ...(resumeParsedData?.education || [])],
-      certifications: [...(user?.certifications || []), ...(resumeParsedData?.certifications || [])],
-      calculatedExperienceYears: calculatedYears
+      projects: projectsList,
+      education: educationList,
+      certifications: certificationsList,
+      calculatedExperienceYears: calculatedYears,
+      highestEducationLevel
     },
     { new: true, upsert: true }
   );

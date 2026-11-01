@@ -157,7 +157,7 @@ export async function login(req, res) {
         success: false,
         error: {
           code: 'PASSWORD_NOT_SET',
-          message: 'This account was migrated from legacy authentication and has no password set. Please use the password reset option to set a password.'
+          message: 'This account was migrated from legacy authentication and has no password set. Please contact support or register your account.'
         }
       });
     }
@@ -287,74 +287,16 @@ export async function getCurrentUser(req, res) {
 }
 
 /**
- * Set or reset password for legacy / existing users.
+ * Insecure unauthenticated password reset disabled for security (Bug 1 fix).
  * POST /api/v1/auth/reset-password
+ * Refuses direct password modification based solely on an email address.
  */
 export async function resetPassword(req, res) {
-  try {
-    const { email, password, confirmPassword } = req.body;
-
-    if (!email || !EMAIL_REGEX.test(email.trim())) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_EMAIL',
-          message: 'Please provide a valid email address.'
-        }
-      });
+  return res.status(403).json({
+    success: false,
+    error: {
+      code: 'PASSWORD_RESET_DISABLED',
+      message: 'Direct unauthenticated password reset is disabled for account security. Please contact support or use verified account recovery.'
     }
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'INVALID_PASSWORD',
-          message: 'Password must be at least 6 characters long.'
-        }
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'PASSWORD_MISMATCH',
-          message: 'Password and confirm password do not match.'
-        }
-      });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: 'No account exists with this email address.'
-        }
-      });
-    }
-
-    // Update password (pre-save hook hashes it)
-    user.password = password;
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        message: 'Password has been set successfully. You can now log in.'
-      }
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: 'RESET_PASSWORD_ERROR',
-        message: 'Failed to reset password: ' + error.message
-      }
-    });
-  }
+  });
 }
-

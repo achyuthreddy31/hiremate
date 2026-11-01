@@ -97,20 +97,30 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
   const searchUrl = (query) => `https://www.google.com/search?q=${encodeURIComponent(`${companyName} ${query}`)}`;
 
   const items = [
+    // Disclaimer item
+    {
+      information: `General guidance — check the company's official website (${searchUrl('official website')}) for authoritative details.`,
+      category: 'overview_milestones',
+      label: 'inferred',
+      confidence: 0.70,
+      sourceUrl: searchUrl('official website'),
+      retrievedAt: new Date()
+    },
+
     // 1. Overview & Milestones
     {
       information: `${companyName} operates as an innovative modern organization focusing on high-growth digital infrastructure, distributed software engineering, and customer-centric platforms.`,
       category: 'overview_milestones',
-      label: 'verified',
-      confidence: 0.95,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('company overview and milestones'),
       retrievedAt: new Date()
     },
     {
       information: `Key operational milestones include multi-market expansion, continuous investment in platform scalability, and sustained customer adoption across enterprise and consumer segments.`,
       category: 'overview_milestones',
-      label: 'verified',
-      confidence: 0.90,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('milestones and history'),
       retrievedAt: new Date()
     },
@@ -119,8 +129,8 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `${companyName} delivers core digital product offerings, enterprise software services, and modular APIs designed for continuous availability and seamless integration.`,
       category: 'products_business_model',
-      label: 'verified',
-      confidence: 0.92,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('products services and business model'),
       retrievedAt: new Date()
     },
@@ -128,7 +138,7 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
       information: `Monetization follows scalable SaaS subscriptions, transaction-based enterprise volume tiers, and strategic managed service partnerships.`,
       category: 'products_business_model',
       label: 'inferred',
-      confidence: 0.85,
+      confidence: 0.70,
       sourceUrl: searchUrl('pricing and monetization model'),
       retrievedAt: new Date()
     },
@@ -137,16 +147,16 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `Engineering systems utilize modern distributed cloud infrastructure (AWS/GCP/Azure), containerized microservices (Docker, Kubernetes), and reactive frontend architectures.`,
       category: 'tech_innovation',
-      label: 'verified',
-      confidence: 0.91,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('tech stack engineering architecture'),
       retrievedAt: new Date()
     },
     {
       information: `Development teams practice automated CI/CD pipelines, comprehensive unit/integration test coverage, and trunk-based deployment workflows with zero-downtime rollouts.`,
       category: 'tech_innovation',
-      label: 'verified',
-      confidence: 0.88,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('developer practices open source engineering'),
       retrievedAt: new Date()
     },
@@ -155,8 +165,8 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `Leadership team comprises experienced industry veterans with strong track records in scaling engineering platforms, product strategy, and operational excellence.`,
       category: 'founders_leadership',
-      label: 'verified',
-      confidence: 0.89,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('founders and executive leadership team'),
       retrievedAt: new Date()
     },
@@ -164,7 +174,7 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
       information: `Engineering leadership emphasizes architectural stewardship, cross-team transparency, and continuous technological modernization.`,
       category: 'founders_leadership',
       label: 'inferred',
-      confidence: 0.78,
+      confidence: 0.70,
       sourceUrl: searchUrl('leadership principles and engineering leadership'),
       retrievedAt: new Date()
     },
@@ -173,8 +183,8 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `${companyName} workplace principles prioritize psychological safety, high engineering ownership, customer obsession, and data-informed decision making.`,
       category: 'culture_values',
-      label: 'verified',
-      confidence: 0.93,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('company culture core values careers'),
       retrievedAt: new Date()
     },
@@ -182,7 +192,7 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
       information: `Work environment supports flexible hybrid or remote work arrangements, structured peer code reviews, and dedicated annual learning and development stipends.`,
       category: 'culture_values',
       label: 'inferred',
-      confidence: 0.82,
+      confidence: 0.70,
       sourceUrl: searchUrl('employee benefits remote policy work life balance'),
       retrievedAt: new Date()
     },
@@ -191,8 +201,8 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `Standard technical hiring process typically encompasses: (1) Recruiter Screen, (2) Technical Coding & Problem Solving, (3) System Architecture & Design, and (4) Culture & Values loop.`,
       category: 'careers_recruitment',
-      label: 'verified',
-      confidence: 0.94,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('interview process and technical hiring stages'),
       retrievedAt: new Date()
     },
@@ -200,7 +210,7 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
       information: `Interviewers prioritize candidates who articulate clear problem-solving trade-offs, demonstrate test-driven development habits, and communicate clearly under technical ambiguity.`,
       category: 'careers_recruitment',
       label: 'inferred',
-      confidence: 0.80,
+      confidence: 0.70,
       sourceUrl: searchUrl('what interviewers look for candidates interview tips'),
       retrievedAt: new Date()
     },
@@ -209,8 +219,8 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
     {
       information: `${companyName} maintains a strong competitive position within its industry segment, driven by rapid technology adoption and durable market demand.`,
       category: 'financial_market',
-      label: 'verified',
-      confidence: 0.87,
+      label: 'inferred',
+      confidence: 0.70,
       sourceUrl: searchUrl('market competitors valuation financial news'),
       retrievedAt: new Date()
     },
@@ -218,7 +228,7 @@ export function buildCompanyResearchDataset(companyName = 'Target Company') {
       information: `Key market differentiators include velocity of feature delivery, platform reliability under load, and comprehensive customer ecosystem integration.`,
       category: 'financial_market',
       label: 'inferred',
-      confidence: 0.75,
+      confidence: 0.70,
       sourceUrl: searchUrl('market share competitive advantage analysis'),
       retrievedAt: new Date()
     }

@@ -1,8 +1,9 @@
-﻿import { Application } from '../models/application.model.js';
+import { Application } from '../models/application.model.js';
 import { JobAnalysis } from '../models/jobAnalysis.model.js';
 import { MatchReport } from '../models/matchReport.model.js';
 import { CandidateProfile } from '../models/candidateProfile.model.js';
 import { Resume } from '../models/resume.model.js';
+import { PracticeAttempt } from '../models/practiceAttempt.model.js';
 import { analyzeJobDescription, generateMatchReportData } from '../services/jobAnalysis.service.js';
 
 export async function analyzeJob(req, res) {
@@ -67,10 +68,11 @@ export async function runJobMatch(req, res) {
   try {
     const { applicationId } = req.params;
 
-    const [jobAnalysis, candidateProfile, resume] = await Promise.all([
+    const [jobAnalysis, candidateProfile, resume, practiceAttempts] = await Promise.all([
       JobAnalysis.findOne({ applicationId, firebaseUid: req.user.uid }),
       CandidateProfile.findOne({ applicationId, firebaseUid: req.user.uid }),
-      Resume.findOne({ applicationId, firebaseUid: req.user.uid }).select('+extractedText')
+      Resume.findOne({ applicationId, firebaseUid: req.user.uid }).select('+extractedText'),
+      PracticeAttempt.find({ applicationId, firebaseUid: req.user.uid })
     ]);
 
     if (!jobAnalysis) {
@@ -88,7 +90,8 @@ export async function runJobMatch(req, res) {
       jobAnalysis,
       candidateProfile: candidateProfile || {},
       resumeQualityChecklist: resume?.qualityChecklist || {},
-      resumeText: resume?.extractedText || ''
+      resumeText: resume?.extractedText || '',
+      practiceAttempts
     });
 
     const matchReport = new MatchReport({

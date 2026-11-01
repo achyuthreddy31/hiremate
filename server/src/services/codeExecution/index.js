@@ -1,12 +1,12 @@
-import { runJavaScript } from './runners/javascriptRunner.js';
-import { runTypeScript } from './runners/typescriptRunner.js';
+import { runJavaScript, buildJavaScriptHarness } from './runners/javascriptRunner.js';
+import { runTypeScript, buildTypeScriptHarness } from './runners/typescriptRunner.js';
 import { runPython } from './runners/pythonRunner.js';
 import { runJava } from './runners/javaRunner.js';
 import { runC } from './runners/cRunner.js';
 import { runCpp } from './runners/cppRunner.js';
 import { executeRemotely, isRemoteExecutionConfigured } from './remoteRunner.js';
 
-export { runJavaScript, runTypeScript, runPython, runJava, runC, runCpp };
+export { runJavaScript, runTypeScript, runPython, runJava, runC, runCpp, buildJavaScriptHarness, buildTypeScriptHarness };
 
 /**
  * Normalizes language name or auto-detects from code syntax.
@@ -83,10 +83,14 @@ export async function evaluateCodingSolution(userCode = '', testCases = [], lang
   // 1. If hardened container runner is configured, dispatch execution securely
   if (isRemoteExecutionConfigured()) {
     switch (normLang) {
-      case 'javascript':
-        return executeRemotely({ language: 'javascript', version: '18.15.0', fileName: 'solution.js', code: userCode, timeoutMs });
-      case 'typescript':
-        return executeRemotely({ language: 'typescript', version: '5.0.3', fileName: 'solution.ts', code: userCode, timeoutMs });
+      case 'javascript': {
+        const jsHarness = buildJavaScriptHarness(userCode, testCases);
+        return executeRemotely({ language: 'javascript', version: '18.15.0', fileName: 'solution.js', code: jsHarness, timeoutMs });
+      }
+      case 'typescript': {
+        const tsHarness = buildTypeScriptHarness(userCode, testCases);
+        return executeRemotely({ language: 'typescript', version: '5.0.3', fileName: 'solution.ts', code: tsHarness, timeoutMs });
+      }
       case 'python':
         return runPython(userCode, testCases, timeoutMs);
       default:

@@ -233,6 +233,77 @@ describe('Multi-Language Code Execution Engine - Security & Reliability', () => 
 
       executeSpy.mockRestore();
     });
+
+    it('dispatches to remote container runner for JavaScript sending evaluation harness with __HIREMATE_EVAL_RESULT__', async () => {
+      process.env.CODE_EXECUTION_URL = 'http://localhost:2000/api/v2/execute';
+      const executeSpy = vi.spyOn(remoteRunner, 'executeRemotely').mockResolvedValueOnce({
+        allPassed: true,
+        results: [{ testCaseIndex: 1, passed: true, input: '1', expected: '1', actual: '1', error: null }],
+        failureReason: null
+      });
+
+      const userCode = 'function add(a, b) { return a + b; }';
+      const testCases = [{ input: '{"a": 2, "b": 3}', expectedOutput: '5' }];
+
+      const res = await evaluateCodingSolution(userCode, testCases, 'javascript');
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      const remoteCall = executeSpy.mock.calls[0][0];
+      expect(remoteCall.language).toBe('javascript');
+      expect(remoteCall.fileName).toBe('solution.js');
+      expect(remoteCall.code).toContain('__HIREMATE_EVAL_RESULT__');
+      expect(remoteCall.code).toContain(userCode);
+      expect(res.allPassed).toBe(true);
+
+      executeSpy.mockRestore();
+    });
+
+    it('dispatches to remote container runner for TypeScript sending evaluation harness with __HIREMATE_EVAL_RESULT__', async () => {
+      process.env.CODE_EXECUTION_URL = 'http://localhost:2000/api/v2/execute';
+      const executeSpy = vi.spyOn(remoteRunner, 'executeRemotely').mockResolvedValueOnce({
+        allPassed: true,
+        results: [{ testCaseIndex: 1, passed: true, input: '1', expected: '1', actual: '1', error: null }],
+        failureReason: null
+      });
+
+      const tsCode = 'function multiply(a: number, b: number): number { return a * b; }';
+      const testCases = [{ input: '{"a": 3, "b": 4}', expectedOutput: '12' }];
+
+      const res = await evaluateCodingSolution(tsCode, testCases, 'typescript');
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      const remoteCall = executeSpy.mock.calls[0][0];
+      expect(remoteCall.language).toBe('typescript');
+      expect(remoteCall.fileName).toBe('solution.ts');
+      expect(remoteCall.code).toContain('__HIREMATE_EVAL_RESULT__');
+      expect(remoteCall.code).toContain(tsCode);
+      expect(res.allPassed).toBe(true);
+
+      executeSpy.mockRestore();
+    });
+
+    it('runJavaScript and runTypeScript delegate directly to remote runner when remote execution is configured', async () => {
+      process.env.CODE_EXECUTION_URL = 'http://localhost:2000/api/v2/execute';
+      const executeSpy = vi.spyOn(remoteRunner, 'executeRemotely').mockResolvedValue({
+        allPassed: true,
+        results: [{ testCaseIndex: 1, passed: true, input: '1', expected: '1', actual: '1', error: null }],
+        failureReason: null
+      });
+
+      await runJavaScript('function foo() { return 1; }', [{ input: '{}', expectedOutput: '1' }]);
+      expect(executeSpy).toHaveBeenCalledWith(expect.objectContaining({
+        language: 'javascript',
+        fileName: 'solution.js',
+        code: expect.stringContaining('__HIREMATE_EVAL_RESULT__')
+      }));
+
+      await runTypeScript('function bar(x: number) { return x; }', [{ input: '5', expectedOutput: '5' }]);
+      expect(executeSpy).toHaveBeenCalledWith(expect.objectContaining({
+        language: 'typescript',
+        fileName: 'solution.ts',
+        code: expect.stringContaining('__HIREMATE_EVAL_RESULT__')
+      }));
+
+      executeSpy.mockRestore();
+    });
   });
 
   describe('Java, C and C++ Corrected Harnesses & Candidate Submission Safeguards', () => {

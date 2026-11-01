@@ -240,7 +240,7 @@ describe('End-to-End Authentication Integration Suite', () => {
     expect(res._json.data.name).toBe('Alex Nexus Updated');
   });
 
-  it('9. Resets and updates password via POST /auth/reset-password', async () => {
+  it('9. Rejects unauthenticated password reset attempts with 403 (Bug 1 security fix)', async () => {
     const newPassword = 'BrandNewPassword789!';
     const req = {
       body: {
@@ -252,20 +252,32 @@ describe('End-to-End Authentication Integration Suite', () => {
     const res = createMockRes();
 
     await resetPassword(req, res);
-    expect(res.statusCode).toBe(200);
-    expect(res._json.success).toBe(true);
+    expect(res.statusCode).toBe(403);
+    expect(res._json.success).toBe(false);
+    expect(res._json.error.code).toBe('PASSWORD_RESET_DISABLED');
 
-    // Verify login works with the new password
-    const loginReq = {
+    // Verify existing password was NOT changed by trying to log in with new password (should fail)
+    const badLoginReq = {
       body: {
         email: testEmail,
         password: newPassword
       }
     };
-    const loginRes = createMockRes();
-    await login(loginReq, loginRes);
-    expect(loginRes.statusCode).toBe(200);
-    expect(loginRes._json.success).toBe(true);
+    const badLoginRes = createMockRes();
+    await login(badLoginReq, badLoginRes);
+    expect(badLoginRes.statusCode).toBe(401);
+
+    // Verify login still works with original valid password
+    const validLoginReq = {
+      body: {
+        email: testEmail,
+        password: testPassword
+      }
+    };
+    const validLoginRes = createMockRes();
+    await login(validLoginReq, validLoginRes);
+    expect(validLoginRes.statusCode).toBe(200);
+    expect(validLoginRes._json.success).toBe(true);
   });
 
   it('10. Logs out successfully via POST /auth/logout', async () => {

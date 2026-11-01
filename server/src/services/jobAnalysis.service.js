@@ -159,7 +159,8 @@ export function generateMatchReportData({
   jobAnalysis,
   candidateProfile,
   resumeQualityChecklist = {},
-  resumeText = ''
+  resumeText = '',
+  practiceAttempts = []
 }) {
   const candidateSkillMap = new Map();
   for (const s of (candidateProfile?.skills || [])) {
@@ -170,45 +171,104 @@ export function generateMatchReportData({
   const requiredSkillsList = [];
 
   for (const req of (jobAnalysis.requirements || [])) {
-    const reqKey = (req.normalizedName || req.name).toLowerCase();
-    requiredSkillsList.push(req.normalizedName || req.name);
+    const reqName = req.normalizedName || req.name;
+    const reqKey = reqName.toLowerCase();
+    requiredSkillsList.push(reqName);
 
-    const candSkill = candidateSkillMap.get(reqKey);
     const evidenceItems = [];
+    const candSkill = candidateSkillMap.get(reqKey);
 
+    // 1. Profile / Resume Skills evidence
     if (candSkill) {
-      // Build evidence items
       const evType = candSkill.source === 'profile' ? EvidenceType.MENTION_ONLY : EvidenceType.PERSONAL_PROJECT;
       evidenceItems.push({
         evidenceType: evType,
         quote: candSkill.name,
-        confidence: 0.9
+        confidence: candSkill.userVerified ? 1.0 : (candSkill.confidence || 0.9)
       });
     }
 
-    const scoringResult = calculateRequirementScore(evidenceItems);
+    // Skill regex for matching in experience/projects text
+    const escapedReq = reqName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const skillRegex = new RegExp(`\\b${escapedReq}\\b`, 'i');
+
+    // 2. Experience evidence (Professional: 90 pts, Internship: 80 pts)
+    for (const exp of (candidateProfile?.experience || [])) {
+      const matchRole = skillRegex.test(exp.role || '');
+      const matchCompany = skillRegex.test(exp.company || '');
+      const matchingBullet = (exp.bullets || []).find(b => skillRegex.test(b));
+
+      if (matchRole || matchCompany || matchingBullet) {
+        evidenceItems.push({
+          evidenceType: exp.isInternship ? EvidenceType.INTERNSHIP : EvidenceType.PROFESSIONAL_EXPERIENCE,
+          quote: matchingBullet || `${exp.role || 'Software Engineer'} at ${exp.company || 'Company'}`,
+          confidence: 0.95
+        });
+      }
+    }
+
+    // 3. Project evidence (Personal: 65 pts, Academic: 55 pts)
+    for (const proj of (candidateProfile?.projects || [])) {
+      const hasSkillInList = (proj.skills || []).some(s => s.toLowerCase() === reqKey);
+      const matchTitle = skillRegex.test(proj.title || '');
+      const matchDesc = skillRegex.test(proj.description || '');
+      const matchingBullet = (proj.bullets || []).find(b => skillRegex.test(b));
+
+      if (hasSkillInList || matchTitle || matchDesc || matchingBullet) {
+        const isAcademic = /academic|university|capstone|coursework/i.test(`${proj.title || ''} ${proj.description || ''}`);
+        evidenceItems.push({
+          evidenceType: isAcademic ? EvidenceType.ACADEMIC_PROJECT : EvidenceType.PERSONAL_PROJECT,
+          quote: matchingBullet || proj.description || proj.title || reqName,
+          confidence: 0.9
+        });
+      }
+    }
+
+    // 4. Certifications evidence (35 pts)
+    for (const cert of (candidateProfile?.certifications || [])) {
+      if (skillRegex.test(cert.name || '')) {
+        evidenceItems.push({
+          evidenceType: EvidenceType.COURSE_OR_CERTIFICATE,
+          quote: cert.name,
+          confidence: 0.9
+        });
+      }
+    }
+
+    // 5. Practice History for this skill
+    const matchingAttempts = (practiceAttempts || []).filter(a => {
+      const topicLower = (a.topic || '').toLowerCase();
+      return topicLower === reqKey || skillRegex.test(a.topic || '');
+    });
+    const attemptsCount = matchingAttempts.length;
+    const correctCount = matchingAttempts.filter(a => a.isCorrect).length;
+    const accuracy = attemptsCount > 0 ? (correctCount / attemptsCount) : 0;
+    const practiceHistory = { attemptsCount, accuracy };
+
+    // Calculate requirement score with aggregated evidence and practice history
+    const scoringResult = calculateRequirementScore(evidenceItems, practiceHistory);
 
     let explanation = '';
     let action = '';
 
     if (scoringResult.status === 'strong') {
-      explanation = `Demonstrated solid verified evidence for ${req.normalizedName}.`;
+      explanation = `Demonstrated solid verified evidence for ${reqName}.`;
       action = 'Keep sharp with practice questions and refine key interview stories.';
     } else if (scoringResult.status === 'good') {
-      explanation = `Good foundational evidence for ${req.normalizedName}, but could benefit from practical depth.`;
+      explanation = `Good foundational evidence for ${reqName}, but could benefit from practical depth.`;
       action = 'Review core architectural patterns and complete targeted coding practice.';
     } else if (scoringResult.status === 'needs_improvement') {
-      explanation = `Only single mention or limited evidence detected for ${req.normalizedName}. Single mentions cannot be rated strong.`;
+      explanation = `Only single mention or limited evidence detected for ${reqName}. Single mentions cannot be rated strong.`;
       action = 'Add project evidence, practice code implementations, or complete course certification.';
     } else {
-      explanation = `No evidence found in candidate profile or resume for required skill ${req.normalizedName}.`;
+      explanation = `No evidence found in candidate profile or resume for required skill ${reqName}.`;
       action = 'Allocate high-priority roadmap study time and build focused project proof.';
     }
 
     requirementsResults.push({
-      requirementRef: req._id ? req._id.toString() : req.normalizedName,
+      requirementRef: req._id ? req._id.toString() : reqName,
       name: req.name,
-      normalizedName: req.normalizedName,
+      normalizedName: reqName,
       category: req.category,
       importance: req.importance,
       status: scoringResult.status,

@@ -43,4 +43,26 @@ describe('Company Research & Grounding Parser Tests', () => {
       expect(['verified', 'inferred', 'predicted', 'unavailable']).toContain(item.label);
     }
   });
+
+  it('Bug 7 Fix: marks template statements as inferred with realistic confidence and includes honest disclaimer', () => {
+    const dataset = buildCompanyResearchDataset('Google');
+
+    // Disclaimer item present
+    const disclaimerItem = dataset.items.find(i => i.information.includes('General guidance — check the company'));
+    expect(disclaimerItem).toBeDefined();
+    expect(disclaimerItem.label).toBe('inferred');
+    expect(disclaimerItem.confidence).toBeGreaterThanOrEqual(0.60);
+    expect(disclaimerItem.confidence).toBeLessThanOrEqual(0.75);
+
+    // No ungrounded template item should falsely claim to be 'verified'
+    const verifiedItems = dataset.items.filter(i => i.label === 'verified');
+    expect(verifiedItems.length).toBe(0);
+
+    // All items should have realistic confidence between 0.60 and 0.70
+    for (const item of dataset.items) {
+      expect(item.label).toBe('inferred');
+      expect(item.confidence).toBeGreaterThanOrEqual(0.60);
+      expect(item.confidence).toBeLessThanOrEqual(0.70);
+    }
+  });
 });

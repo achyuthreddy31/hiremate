@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { requireAuth } from '../src/middleware/auth.middleware.js';
 import { signToken } from '../src/utils/token.js';
+import { envSchema, INSECURE_DEFAULT_JWT_SECRET } from '../src/config/env.js';
 import { register, login, logout, getCurrentUser, resetPassword } from '../src/controllers/auth.controller.js';
 import { User } from '../src/models/user.model.js';
 import bcrypt from 'bcryptjs';
@@ -361,11 +362,11 @@ describe('HireMate Nexus MongoDB Authentication & Security Tests', () => {
       }));
     });
 
-    it('resetPassword updates user password securely', async () => {
+    it('resetPassword disables unauthenticated password resets (Bug 1 fix)', async () => {
       const mockUser = {
         _id: 'user_reset',
         email: 'reset@example.com',
-        save: vi.fn().mockResolvedValueOnce(true)
+        save: vi.fn()
       };
 
       vi.spyOn(User, 'findOne').mockResolvedValueOnce(mockUser);
@@ -380,9 +381,81 @@ describe('HireMate Nexus MongoDB Authentication & Security Tests', () => {
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
 
       await resetPassword(req, res);
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockUser.save).toHaveBeenCalled();
-      expect(mockUser.password).toBe('newPassword123!');
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: 'PASSWORD_RESET_DISABLED'
+        })
+      }));
+      expect(mockUser.save).not.toHaveBeenCalled();
     });
+  describe('Production JWT Secret Enforcement & Validation (Bug 2 fix)', () => {
+    it('refuses production startup when JWT_SECRET is missing or empty', () => {
+      const prodEnv = {
+        NODE_ENV: 'production',
+        PORT: '5000',
+        CLIENT_URL: 'https://hiremate-lilac.vercel.app',
+        MONGODB_URI: 'mongodb://localhost:27017/hiremate_ai',
+        JWT_SECRET: ''
+      };
+      const result = envSchema.safeParse(prodEnv);
+      expect(result.success).toBe(false);
+      const errors = result.error.errors.map(e => e.message);
+      expect(errors.some(msg => msg.includes('JWT_SECRET is required in production'))).toBe(true);
+    });
+
+    it('refuses production startup when JWT_SECRET equals the insecure default', () => {
+      const prodEnv = {
+        NODE_ENV: 'production',
+        PORT: '5000',
+        CLIENT_URL: 'https://hiremate-lilac.vercel.app',
+        MONGODB_URI: 'mongodb://localhost:27017/hiremate_ai',
+        JWT_SECRET: INSECURE_DEFAULT_JWT_SECRET
+      };
+      const result = envSchema.safeParse(prodEnv);
+      expect(result.success).toBe(false);
+      const errors = result.error.errors.map(e => e.message);
+      expect(errors.some(msg => msg.includes('Insecure default JWT_SECRET cannot be used in production'))).toBe(true);
+    });
+
+    it('refuses production startup when JWT_SECRET is shorter than 32 characters', () => {
+      const prodEnv = {
+        NODE_ENV: 'production',
+        PORT: '5000',
+        CLIENT_URL: 'https://hiremate-lilac.vercel.app',
+        MONGODB_URI: 'mongodb://localhost:27017/hiremate_ai',
+        JWT_SECRET: 'short-secret-under-32-chars!'
+      };
+      const result = envSchema.safeParse(prodEnv);
+      expect(result.success).toBe(false);
+      const errors = result.error.errors.map(e => e.message);
+      expect(errors.some(msg => msg.includes('must be at least 32 characters long'))).toBe(true);
+    });
+
+    it('succeeds in production when a valid unpredictable 32+ character secret is provided', () => {
+      const prodEnv = {
+        NODE_ENV: 'production',
+        PORT: '5000',
+        CLIENT_URL: 'https://hiremate-lilac.vercel.app',
+        MONGODB_URI: 'mongodb://localhost:27017/hiremate_ai',
+        JWT_SECRET: 'c8f3a9e2d1b740589a6c3e1f7b2a9d8e4f5c6b7a8d9e0f1a2b3c4d5e6f7a8b9c'
+      };
+      const result = envSchema.safeParse(prodEnv);
+      expect(result.success).toBe(true);
+      expect(result.data.JWT_SECRET).toBe('c8f3a9e2d1b740589a6c3e1f7b2a9d8e4f5c6b7a8d9e0f1a2b3c4d5e6f7a8b9c');
+    });
+
+    it('permits default fallback in development and test environments', () => {
+      const devEnv = {
+        NODE_ENV: 'development',
+        PORT: '5000'
+      };
+      const result = envSchema.safeParse(devEnv);
+      expect(result.success).toBe(true);
+      expect(result.data.JWT_SECRET).toBe(INSECURE_DEFAULT_JWT_SECRET);
+    });
+  });
+
   });
 });

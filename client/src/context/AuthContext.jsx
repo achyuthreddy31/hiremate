@@ -94,17 +94,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const resetPassword = async (email, password, confirmPassword) => {
-    const res = await apiClient.post('/auth/reset-password', {
-      email,
-      password,
-      confirmPassword
-    });
-    return res.data;
-  };
-
   return (
-    <AuthContext.Provider value={{ currentUser, loading, login, register, logout, resetPassword }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, register, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
