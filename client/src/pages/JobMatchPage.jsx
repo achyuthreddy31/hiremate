@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { apiClient } from '../services/api';
@@ -24,7 +24,7 @@ export default function JobMatchPage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'strong' | 'good' | 'gaps' | 'categories'
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'gaps'
 
   useEffect(() => {
     fetchMatchData();
@@ -95,12 +95,8 @@ export default function JobMatchPage() {
   };
 
   const requirements = report?.requirementsResults || [];
-  const filteredReqs = requirements.filter(r => {
-    if (activeTab === 'strong') return r.status === 'strong';
-    if (activeTab === 'good') return r.status === 'good';
-    if (activeTab === 'gaps') return r.status === 'needs_improvement' || r.status === 'missing' || r.status === 'insufficient_data';
-    return true;
-  });
+  const skillGaps = requirements.filter(r => r.status !== 'strong' && r.status !== 'good');
+  const filteredReqs = activeTab === 'gaps' ? skillGaps : requirements;
 
   return (
     <AppLayout currentApplication={app}>
@@ -153,7 +149,7 @@ export default function JobMatchPage() {
                   {report.totalScore}%
                 </div>
                 <div className="text-xs text-[var(--text-muted)] mt-1">
-                  Weighted sum over included categories
+                  Overall score across included categories
                 </div>
               </div>
 
@@ -188,14 +184,14 @@ export default function JobMatchPage() {
             {/* 6 Category Breakdown Cards */}
             {report.categoryScores && (
               <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-4 shadow-sm">
-                <h3 className="font-extrabold text-base">Weighted Scoring Categories</h3>
+                <h3 className="font-extrabold text-base">Scoring Categories</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {Object.entries(report.categoryScores).map(([catKey, catVal]) => (
                     <div key={catKey} className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] space-y-1">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold capitalize">{catKey.replace(/([A-Z])/g, ' $1')}</span>
                         <span className="font-extrabold text-blue-600 dark:text-blue-400">
-                          {catVal.status === 'included' ? `${catVal.score}% (W: ${catVal.weight})` : `${catVal.status}`}
+                          {catVal.status === 'included' ? `${catVal.score}%` : `${catVal.status}`}
                         </span>
                       </div>
                       <p className="text-[11px] text-[var(--text-muted)] leading-tight">{catVal.explanation}</p>
@@ -216,32 +212,15 @@ export default function JobMatchPage() {
                 All Requirements ({requirements.length})
               </button>
               <button
-                onClick={() => setActiveTab('strong')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  activeTab === 'strong' ? 'bg-emerald-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                Strong ({requirements.filter(r => r.status === 'strong').length})
-              </button>
-              <button
-                onClick={() => setActiveTab('good')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  activeTab === 'good' ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                Good ({requirements.filter(r => r.status === 'good').length})
-              </button>
-              <button
                 onClick={() => setActiveTab('gaps')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   activeTab === 'gaps' ? 'bg-amber-600 text-white' : 'text-[var(--text-muted)] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                Skill Gaps ({requirements.filter(r => r.status !== 'strong' && r.status !== 'good').length})
+                Skill Gaps ({skillGaps.length})
               </button>
             </div>
-
-            {/* Requirements Cards with Why Panels */}
+{/* Requirements Cards with Why Panels */}
             <div className="space-y-3.5">
               {filteredReqs.map((req, idx) => (
                 <div
@@ -251,9 +230,6 @@ export default function JobMatchPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="font-extrabold text-sm sm:text-base">{req.normalizedName}</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-slate-100 dark:bg-slate-800 text-[var(--text-muted)] capitalize">
-                        {req.importance} (Weight {req.importance === 'critical' ? 3 : req.importance === 'important' ? 2 : 1})
-                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-extrabold">Score: {req.score}/100</span>
